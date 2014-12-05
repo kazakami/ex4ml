@@ -292,10 +292,11 @@ and neg n =
   else pos n -. 1.0 /. (float_of_int (4 * n + 3));;
 *)
 
+
 let rec atan1 n =
   if n < 0
   then 0.0
-  else pn (n-1) +. 1.0 /. (float_of_int (4 * n + 1)) -. 1.0 /. (float_of_int (4 * n + 3));;
+  else atan1 (n-1) +. 1.0 /. (float_of_int (4 * n + 1)) -. 1.0 /. (float_of_int (4 * n + 3));;
 
 
 
@@ -608,7 +609,7 @@ let rec take n s =
 type loc_fig = {x : int; y : int; fig : figure};;
 
 (* Exercise 6.1 *)
-let overlap {x=x1;y=y1;fig=f1} {x=x2;y=y2;fig=f2} =
+let rec overlap {x=x1;y=y1;fig=f1} {x=x2;y=y2;fig=f2} =
   match (f1, f2) with
   | (Square s, Circle r) | (Circle r, Square s) ->
     (overlap {x=x1;y=y1;fig=Rectangle (s, s)} 
@@ -789,7 +790,105 @@ let rec addList t =
   function [] -> t
   | x :: xs -> addList (add t x) xs;;
 
+(*
+Br (1, Lf, Br (2, Lf, Br (3, Lf, Br (4, Lf, Lf))))
+1 2 3 4の順番にadd
+*)
+
+(*
+Br (1, Lf, Br (2, Lf, Br (4, Br (3, Lf, Lf), Lf)))
+1 2 4 3の順番にadd
+*)
+
+(*
+Br (1, Lf, Br (3, Br (2, Lf, Lf), Br (4, Lf, Lf)))
+1 3 2 4の順番にadd
+1 3 4 2の順番にadd
+*)
+
+(*
+Br (1, Lf, Br (4, Br (2, Lf, Br (3, Lf, Lf)), Lf))
+1 4 2 3の順番にadd
+*)
+
+(*
+Br (1, Lf, Br (4, Br (3, Br (2, Lf, Lf), Lf), Lf))
+1 4 3 2の順番にadd
+*)
+
+(*
+Br (2, Br (1, Lf, Lf), Br (3, Lf, Br (4, Lf, Lf)))
+2 1 3 4の順番にadd
+2 3 1 4の順番にadd
+2 3 4 1の順番にadd
+*)
+
+(*
+Br (2, Br (1, Lf, Lf), Br (4, Br (3, Lf, Lf), Lf))
+2 1 4 3の順番にadd
+2 4 1 3の順番にadd
+2 4 3 1の順番にadd
+*)
+
+(*
+Br (3, Br (1, Lf, Br (2, Lf, Lf)), Br (4, Lf, Lf))
+3 1 2 4の順番にadd
+3 1 4 2の順番にadd
+3 4 1 2の順番にadd
+*)
+
+(*
+Br (3, Br (2, Br (1, Lf, Lf), Lf), Br (4, Lf, Lf))
+3 2 1 4の順番にadd
+3 2 4 1の順番にadd
+3 4 2 1の順番にadd
+*)
+
+(*
+Br (4, Br (1, Lf, Br (2, Lf, Br (3, Lf, Lf))), Lf)
+4 1 2 3の順番にadd
+*)
+
+(*
+Br (4, Br (1, Lf, Br (3, Br (2, Lf, Lf), Lf)), Lf)
+4 1 3 2の順番にadd
+*)
+
+(*
+Br (4, Br (2, Br (1, Lf, Lf), Br (3, Lf, Lf)), Lf)
+4 2 1 3の順番にadd
+4 2 3 1の順番にadd
+*)
+
+(*
+Br (4, Br (3, Br (1, Lf, Br (2, Lf, Lf)), Lf), Lf)
+4 3 1 2の順番にadd
+*)
+
+(*
+Br (4, Br (3, Br (2, Br (1, Lf, Lf), Lf), Lf), Lf)
+4 3 2 1の順番にadd
+*)
+
+
 (* Exercise 6.9 *)
+let rec from n = Cons (n, fun () -> from (n + 1));;
+let rec mapseq f (Cons (x, tail)) =
+  Cons (f x, fun () -> mapseq f (tail ()));;
+let rec filterseq f (Cons (x, tail)) =
+  if f x
+  then filterseq f (tail ())
+  else Cons (x, fun () -> filterseq f (tail ()));;
+let rec nthseq n (Cons (x, f)) =
+  if n = 1 then x else nthseq (n - 1) (f());;
+let sift n = filterseq (fun x -> x mod n == 0);;
+let rec sieve (Cons (x, f)) =
+  Cons (x, fun () -> sieve (sift x (f())));;
+let primes = sieve (from 2);;
+
+(* nthseq (9488+3000) primes;; *)
+
+
 (* Exercise 6.10 *)
 type ('a, 'b) sum = Left of 'a | Right of 'b;;
 (* (1) *)
@@ -797,22 +896,22 @@ let e610_1 (a, s) =
   match s with
   | Left l -> Left (a, l)
   | Right r -> Right (a, r);;
-
+(* (2) *)
 let e610_2 =
   function
   | (Left a, Left c) -> Left (Left (a, c))
   | (Left a, Right d) -> Right(Left (a, d))
   | (Right b, Left c) -> Right (Right (b, c))
   | (Right b, Right d) -> Left (Right (b, d));;
-
+(* (3) *)
 let e610_3 (fl, fr) =
   function
   | Left l -> fl l
   | Right r -> fr r;;
-
+(* (4) *)
 let e610_4 f =
   ((fun x -> f (Left x)), (fun x -> f (Right x)));;
-
+(* (5) *)
 let e610_5 =
   function
   | Left fl -> (fun x -> Left (fl x))
@@ -820,9 +919,101 @@ let e610_5 =
 
 
 
+(* Exercise 7.1 *)
+let ref x = {contents=x};;
+let (!) {contents=x} = x;;
+let (:=) x y = x.contents<-y;;
+
+(* Exercise 7.2 *)
+let incr x = x.contents<-(!x+1);;
+
+(* Exercise 7.3 *)
+let f = ref (fun y -> y + 1);;
+let funny_fact x =
+  if x = 0
+  then 1
+  else x * (!f (x-1));;
+f := funny_fact;;
+(*
+funny_fact内で呼び出される関数の参照fをfunny_fact自身に書き換えることで再帰しているのと同様に動作する。
+*)
 
 
+(* Exercise 7.4 *)
+let fact_imp n =
+  let i = ref n and res = ref 1 in
+  while (!i <> 0) do
+    res := !res * !i;
+    i := !i - 1
+  done;
+  !res;;
 
+(* Exercise 7.5 *)
+let rec fact n =
+  if n < 0
+  then raise (Invalid_argument "fact needs natural number.")
+  else if n = 0
+  then 1
+  else n * fact (n-1);;
 
+(* Exercise 7.6 *)
+(*
+let x = ref [];;
+とした場合、型はテキストの様に 'a list ref ではなく、実際は '_a list ref となる。
+'_aは型を決めることができると、'_aからこの型となる。
+今回の例ではxにboolの値をconsした段階で '_a list ref から bool list ref になり、int をconsしようとするとエラーを検出できる。
+*)
 
+(* Exercise 7.7 *)
+type pointI = {get: unit -> int; set: int -> unit; inc: unit->unit};;
+let p =
+  let x = ref 0 in
+  let rec this () =
+    {get= (fun () -> !x);
+     set= (fun newx -> x:=newx);
+     inc= (fun () -> (this ()).set ((this ()).get () + 1))} in
+  this ();;
+let pointC x =
+  let rec this () =
+    {get= (fun () -> !x);
+     set= (fun newx -> x:=newx);
+     inc= (fun () -> (this ()).set ((this ()).get () + 1))} in
+  this ();;
+let new_point x = pointC (ref x);;
+type color = Blue | Red | Green | White;;
+type cpointI = {cget: unit -> int;
+		cset: int -> unit;
+		cinc: unit->unit;
+		getcolor: unit-> color};;
+let cpointC x col=
+  let super = pointC x in
+  let rec this =
+    {cget= super.get;
+     cset= (fun x -> super.set x; col := White);
+     cinc= (fun () -> super.inc (); col := White);
+     getcolor = (fun () -> !col)} in
+  this;;
+let new_cpoint x col = cpointC (ref x) (ref col);;
+(*
+cincでは点の座標を増やしているだけで色を変えてないので変わるわけがない。
+*)
 
+(* Exercise 7.8 *)
+let us_coins = [25; 10; 5; 1]
+and gb_coins = [50; 20; 10; 5; 2; 1]
+and jp_coins = [500; 100; 50; 10; 5; 1]
+and hoge_coins = [5; 2];;
+let rec change =
+  function
+  | (_, 0) -> []
+  | ((x::xs) as coins, amount)
+    -> (try (if x <= amount
+      then x :: (change (coins, amount - x))
+      else change (xs, amount)) with
+	   | Match_failure _-> change (xs, amount));;
+(*
+パターンマッチできない状況になると例外によって一つ戻り、最大のコインを使わない場合を計算する。
+*)
+
+(* Exercise 7.9 *)
+let print_int l = output_string stdout (string_of_int l);;
