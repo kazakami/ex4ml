@@ -1017,3 +1017,12 @@ let rec change =
 
 (* Exercise 7.9 *)
 let print_int l = output_string stdout (string_of_int l);;
+
+(* Exercise 7.10 *)
+let cp src dst =
+  let s = open_in src
+  and d = open_out dst
+  in try (while (true) do output_string d ((input_line s)^"\n"); done;) with
+  | End_of_file -> print_string ("copied "^src^" to "^dst);
+    close_in s;
+    close_out d;;
