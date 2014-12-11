@@ -83,11 +83,19 @@ let andb b1 b2 =
   if not b1 
   then false
   else b2;;
+(*
+  # andb true false;;
+  - : bool = false
+*)
 
 let orb b1 b2=
   if b1
   then true
   else b2;;
+(*
+  # orb true false;;
+  - : bool = true
+*)
 
 
 (* Exercise 2.5 *)
