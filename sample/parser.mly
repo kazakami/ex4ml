@@ -5,7 +5,7 @@ open Syntax
 %token LPAREN RPAREN SEMISEMI
 %token LOR LAND PLUS MULT LT
 %token IF THEN ELSE TRUE FALSE
-%token LET IN EQ AND
+%token LET IN EQ AND REC
 
 %token <int> INTV
 %token <bool> BOOLV
@@ -56,6 +56,8 @@ AndExpr :
 LetExpr :
     LET Ident EQ Expr IN Expr { LetExp (Declare ($2, $4), $6) }
   | LET Ident FunDecl IN Expr { LetExp (Declare ($2, $3), $5) }
+  | LET REC Ident EQ FUN Ident RARROW Expr IN Expr
+      { LetRecExp ($3, $6, $8, $10) }
   | LET Ident EQ Expr AndExpr IN Expr { LetandExp (AndExp(Declare ($2, $4), $5), $7) }
   | LET Ident FunDecl AndExpr IN Expr { LetandExp (AndExp(Declare ($2, $3), $4), $6) }
 
@@ -116,3 +118,4 @@ FunExpr :
   | FUN Ident Fun_ { FunExp ($2, $3) }
   | DFUN Ident RARROW Expr { DFunExp ($2, $4) }
 //  | DFUN Ident DFun_ { DFunExp ($2, $3) }
+

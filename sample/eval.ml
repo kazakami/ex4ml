@@ -7,7 +7,7 @@ type 'a maybe =
 type exval = 
     IntV of int
   | BoolV of bool
-  | ProcV of id * exp * dnval Environment.t
+  | ProcV of id * exp * dnval Environment.t ref
   | DProcV of id * exp
 and dnval = exval
 
@@ -82,7 +82,7 @@ let rec eval_exp env = function
       | _ -> raise (Error "error in let and")
     in eval_exp (env_extend env (andList env andexp)) exp
   | AndExp _ | AndEnd -> raise (Error "error in and")
-  | FunExp (id, exp) -> ProcV (id, exp, env)
+  | FunExp (id, exp) -> ProcV (id, exp, ref env)
   | DFunExp (id, exp) -> DProcV (id, exp)
   | AppExp (exp1, exp2) ->
     let funval = eval_exp env exp1 in
@@ -92,9 +92,15 @@ let rec eval_exp env = function
       -> let newenv = Environment.extend id arg env
 	 in eval_exp newenv body
     | ProcV (id, body, env') ->
-      let newenv = Environment.extend id arg env' in
+      let newenv = Environment.extend id arg !env' in
       eval_exp newenv body
     | _ -> err ("Non-function value is applied"))
+  | LetRecExp (id, para, exp1, exp2) ->
+    let dummyenv = ref Environment.empty in
+    let newenv =
+      Environment.extend id (ProcV (para, exp1, dummyenv)) env in
+    dummyenv := newenv;
+    eval_exp newenv exp2
   | _ -> err "err in pattern match in eval_exp"
 
 

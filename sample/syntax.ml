@@ -17,6 +17,7 @@ type exp =
   | FunExp of id * exp
   | DFunExp of id * exp
   | AppExp of exp * exp
+  | LetRecExp of id * id * exp * exp
 
 type program = 
     Exp of exp
@@ -24,3 +25,4 @@ type program =
   | AndDecl of program * program
   | Decl of id * exp
   | NoneDecl
+  | RecDecl of id * id * exp
