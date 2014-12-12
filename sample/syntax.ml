@@ -9,9 +9,10 @@ type exp =
   | BLit of bool
   | BinOp of binOp * exp * exp
   | IfExp of exp * exp * exp
-  | LetExp of id * exp * exp
+  | Declare of id * exp
+  | LetExp of exp * exp (* 第一引数はDeclare *)
   | LetandExp of exp * exp
-  | AndExp of id * exp * exp
+  | AndExp of exp * exp (* 第一引数はDeclare *)
   | AndEnd
   | FunExp of id * exp
   | AppExp of exp * exp

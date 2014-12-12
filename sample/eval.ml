@@ -65,12 +65,12 @@ let rec eval_exp env = function
             BoolV true -> eval_exp env exp2 
           | BoolV false -> eval_exp env exp3
           | _ -> err ("Test expression must be boolean: if"))
-  | LetExp (id, exp1, exp2) ->
+  | LetExp (Declare (id, exp1), exp2) ->
     let value = eval_exp env exp1 in
     eval_exp (Environment.extend id value env) exp2
   | LetandExp (andexp, exp) -> 
     let rec andList env = function
-      | AndExp (ident, e, nextExp)
+      | AndExp (Declare (ident, e), nextExp)
 	  -> (ident, (eval_exp env e)) :: (andList env nextExp)
       | AndEnd -> []
       | _ -> raise (Error "error in let and")
@@ -85,7 +85,7 @@ let rec eval_exp env = function
 	let newenv = Environment.extend id arg env' in
 	eval_exp newenv body
     | _ -> err ("Non-function value is applied"))
-      
+  | _ -> err "err in pattern match in eval_exp"
 
 
 
