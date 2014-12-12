@@ -11,7 +11,7 @@ open Syntax
 %token <bool> BOOLV
 %token <Syntax.id> ID
 %token <Syntax.id> PMID
-%token RARROW FUN
+%token RARROW FUN DFUN
 
 %start toplevel
 %type <Syntax.program> toplevel
@@ -106,7 +106,13 @@ IfExpr :
 Fun_ :
     Ident RARROW Expr { FunExp ($1, $3) }
   | Ident Fun_ { FunExp ($1, $2) }
-
+/*
+DFun_ :
+    Ident RARROW Expr { DFunExp ($1, $3) }
+  | Ident DFun_ { DFunExp ($1, $2) }
+*/
 FunExpr :
     FUN Ident RARROW Expr { FunExp ($2, $4) }
   | FUN Ident Fun_ { FunExp ($2, $3) }
+  | DFUN Ident RARROW Expr { DFunExp ($2, $4) }
+//  | DFUN Ident DFun_ { DFunExp ($2, $3) }

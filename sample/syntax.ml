@@ -15,6 +15,7 @@ type exp =
   | AndExp of exp * exp (* 第一引数はDeclare *)
   | AndEnd
   | FunExp of id * exp
+  | DFunExp of id * exp
   | AppExp of exp * exp
 
 type program = 

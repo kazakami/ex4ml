@@ -1,9 +1,14 @@
 open Syntax 
 
+type 'a maybe =
+  Nothing
+| Just of 'a
+
 type exval = 
     IntV of int
   | BoolV of bool
   | ProcV of id * exp * dnval Environment.t
+  | DProcV of id * exp
 and dnval = exval
 
 exception Error of string
@@ -15,6 +20,7 @@ let rec string_of_exval = function
     IntV i -> string_of_int i
   | BoolV b -> string_of_bool b
   | ProcV _ -> "<fun>"
+  | DProcV _ -> "<fun>"
 
 let pp_val v = print_string (string_of_exval v)
 
@@ -77,13 +83,17 @@ let rec eval_exp env = function
     in eval_exp (env_extend env (andList env andexp)) exp
   | AndExp _ | AndEnd -> raise (Error "error in and")
   | FunExp (id, exp) -> ProcV (id, exp, env)
+  | DFunExp (id, exp) -> DProcV (id, exp)
   | AppExp (exp1, exp2) ->
     let funval = eval_exp env exp1 in
     let arg = eval_exp env exp2 in
     (match funval with
-      ProcV (id, body, env') ->
-	let newenv = Environment.extend id arg env' in
-	eval_exp newenv body
+    | DProcV (id, body)
+      -> let newenv = Environment.extend id arg env
+	 in eval_exp newenv body
+    | ProcV (id, body, env') ->
+      let newenv = Environment.extend id arg env' in
+      eval_exp newenv body
     | _ -> err ("Non-function value is applied"))
   | _ -> err "err in pattern match in eval_exp"
 
