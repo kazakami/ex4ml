@@ -10,6 +10,7 @@ open Syntax
 %token <int> INTV
 %token <bool> BOOLV
 %token <Syntax.id> ID
+%token <Syntax.id> MID
 %token RARROW FUN
 
 %start toplevel
@@ -21,19 +22,19 @@ toplevel :
   | Lets SEMISEMI{ $1 }
 /*
 Lets :
-    LET ID EQ Expr { ManyDecl ((Decl ($2, $4)), NoneDecl) } 
-  | LET ID EQ Expr Lets { ManyDecl ((Decl ($2, $4)), $5) }
+    LET Ident EQ Expr { ManyDecl ((Decl ($2, $4)), NoneDecl) } 
+  | LET Ident EQ Expr Lets { ManyDecl ((Decl ($2, $4)), $5) }
 */
 
 LetsAnd :
-    AND ID EQ Expr { AndDecl (Decl ($2, $4), NoneDecl) }
-  | AND ID EQ Expr LetsAnd { AndDecl (Decl ($2, $4), $5) }
+    AND Ident EQ Expr { AndDecl (Decl ($2, $4), NoneDecl) }
+  | AND Ident EQ Expr LetsAnd { AndDecl (Decl ($2, $4), $5) }
 
 Lets :
-    LET ID EQ Expr { ManyDecl (AndDecl(Decl ($2, $4), NoneDecl), NoneDecl) }
-  | LET ID EQ Expr LetsAnd  { ManyDecl (AndDecl(Decl ($2, $4), $5), NoneDecl) }
-  | LET ID EQ Expr Lets { ManyDecl (AndDecl(Decl ($2, $4), NoneDecl), $5) }
-  | LET ID EQ Expr LetsAnd Lets { ManyDecl (AndDecl(Decl ($2, $4), $5), $6) }
+    LET Ident EQ Expr { ManyDecl (AndDecl(Decl ($2, $4), NoneDecl), NoneDecl) }
+  | LET Ident EQ Expr LetsAnd  { ManyDecl (AndDecl(Decl ($2, $4), $5), NoneDecl) }
+  | LET Ident EQ Expr Lets { ManyDecl (AndDecl(Decl ($2, $4), NoneDecl), $5) }
+  | LET Ident EQ Expr LetsAnd Lets { ManyDecl (AndDecl(Decl ($2, $4), $5), $6) }
 
 Expr :
     IfExpr { $1 }
@@ -42,12 +43,12 @@ Expr :
   | FunExpr { $1 }
 
 AndExpr :
-    AND ID EQ Expr { AndExp ($2, $4, AndEnd) }
-  | AND ID EQ Expr AndExpr { AndExp ($2, $4, $5) }
+    AND Ident EQ Expr { AndExp ($2, $4, AndEnd) }
+  | AND Ident EQ Expr AndExpr { AndExp ($2, $4, $5) }
 
 LetExpr :
-    LET ID EQ Expr IN Expr { LetExp ($2, $4, $6) }
-  | LET ID EQ Expr AndExpr IN Expr { LetandExp (AndExp($2, $4, $5), $7) }
+    LET Ident EQ Expr IN Expr { LetExp ($2, $4, $6) }
+  | LET Ident EQ Expr AndExpr IN Expr { LetandExp (AndExp($2, $4, $5), $7) }
 
 LOExpr :
     LAExpr LOR LAExpr { BinOp (LOr, $1, $3) }
@@ -78,11 +79,18 @@ AExpr :
   | TRUE { BLit true }
   | FALSE { BLit false }
   | ID { Var $1 }
+  | MID { Var $1 }
   | LPAREN Expr RPAREN { $2 }
+
+
+Ident :
+    ID { $1 }
+  | MID { $1 }
+
 
 IfExpr :
     IF Expr THEN Expr ELSE Expr { IfExp ($2, $4, $6) }
 
    
 FunExpr :
-    FUN ID RARROW Expr { FunExp ($2, $4) }
+    FUN Ident RARROW Expr { FunExp ($2, $4) }
