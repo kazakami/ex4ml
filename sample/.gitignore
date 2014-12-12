@@ -13,7 +13,7 @@ lexer.cmx
 lexer.ml
 main.cmi
 main.cmo
-minimal
+miniml
 parser.cmi
 parser.cmo
 parser.cmx
