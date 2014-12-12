@@ -19,17 +19,22 @@ open Syntax
 toplevel :
     Expr SEMISEMI { Exp $1 }
   | Lets SEMISEMI{ $1 }
-
+/*
 Lets :
     LET ID EQ Expr { ManyDecl ((Decl ($2, $4)), NoneDecl) } 
   | LET ID EQ Expr Lets { ManyDecl ((Decl ($2, $4)), $5) }
-/*
+*/
+
+LetsAnd :
+    AND ID EQ Expr { AndDecl (Decl ($2, $4), NoneDecl) }
+  | AND ID EQ Expr LetsAnd { AndDecl (Decl ($2, $4), $5) }
+
 Lets :
     LET ID EQ Expr { ManyDecl (AndDecl(Decl ($2, $4), NoneDecl), NoneDecl) }
   | LET ID EQ Expr LetsAnd  { ManyDecl (AndDecl(Decl ($2, $4), $5), NoneDecl) }
   | LET ID EQ Expr Lets { ManyDecl (AndDecl(Decl ($2, $4), NoneDecl), $5) }
   | LET ID EQ Expr LetsAnd Lets { ManyDecl (AndDecl(Decl ($2, $4), $5), $6) }
-*/
+
 Expr :
     IfExpr { $1 }
   | LetExpr { $1 }

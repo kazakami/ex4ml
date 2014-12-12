@@ -89,10 +89,33 @@ let rec eval_exp env = function
 
 
 
+let rec unzip = function
+  | [] -> ([],[])
+  | (a, b) :: xs -> 
+    let (at, bt) = unzip xs
+    in (a::at, b::bt)
+
 let rec eval_decl env = function
     Exp e -> let v = eval_exp env e in (["-"], env, [v])
   | Decl (id, e) ->
     let v = eval_exp env e in ([id], Environment.extend id v env, [v])
+  | (ManyDecl _) as md ->
+    let rec evlAndDecl env = function
+      | AndDecl (Decl (i, e), decl2) -> 
+	(i, eval_exp env e) :: (evlAndDecl env decl2)
+      | NoneDecl -> []
+      | _ -> raise (Error "Error in \"let and\" declare")
+    in let rec evlManyDecl ids vs env = function
+      | ManyDecl (decl1, decl2) ->
+	let addingList = evlAndDecl env decl1
+	in let (id, v) = unzip addingList
+	   in evlManyDecl (ids@id) (vs@v) (env_extend env addingList) decl2
+      | NoneDecl -> (ids, env, vs)
+      | _ -> raise (Error "Error in \"let and\" declare")
+       in evlManyDecl [] [] env md
+  | NoneDecl -> ([], env, [])
+  | _ -> raise (Error "erro in pattern match in eval decl")
+(*
   | (ManyDecl (_, _)) as md ->
     let rec evlDcl ids vs env = function
       | ManyDecl (decl1, decl2) ->
@@ -101,7 +124,8 @@ let rec eval_decl env = function
       | NoneDecl -> (ids, env, vs)
       | _ -> raise (Error "error in many declare")
     in evlDcl [] [] env md
+*)
 (*  | ManyDecl (decl1, decl2) ->
     let (id, newenv, v) = eval_decl env decl1
     in eval_decl newenv decl2*)
-  | NoneDecl -> ([], env, [])
+
