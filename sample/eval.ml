@@ -41,8 +41,12 @@ let rec print_type_vals id v =
 let rec apply_prim op arg1 arg2 = match op, arg1, arg2 with
     Plus, IntV i1, IntV i2 -> IntV (i1 + i2)
   | Plus, _, _ -> err ("Both arguments must be integer: +")
+  | Minus, IntV i1, IntV i2 -> IntV (i1 - i2)
+  | Minus, _, _ -> err ("Both arguments must be integer: -")
   | Mult, IntV i1, IntV i2 -> IntV (i1 * i2)
   | Mult, _, _ -> err ("Both arguments must be integer: *")
+  | Div, IntV i1, IntV i2 -> IntV (i1 / i2)
+  | Div, _, _ -> err ("Both arguments must be integer: /")
   | Lt, IntV i1, IntV i2 -> BoolV (i1 < i2)
   | Lt, _, _ -> err ("Both arguments must be integer: <")
   | LAnd, BoolV b1, BoolV b2 -> BoolV (b1 && b2)
@@ -119,6 +123,10 @@ let rec eval_decl env = function
     let rec evlAndDecl env = function
       | AndDecl (Decl (i, e), decl2) -> 
 	(i, eval_exp env e) :: (evlAndDecl env decl2)
+      | AndDecl ((RecDecl _) as decl1, decl2) ->
+	(match eval_decl env decl1 with
+	  | (id::_, _, e::_) -> (id, e) :: (evlAndDecl env decl2)
+	  | _ -> raise (Error "error in rec decl"))
       | NoneDecl -> []
       | _ -> raise (Error "Error in \"let and\" declare")
     in let rec evlManyDecl ids vs env = function
@@ -129,6 +137,12 @@ let rec eval_decl env = function
       | NoneDecl -> (ids, env, vs)
       | _ -> raise (Error "Error in \"let and\" declare")
        in evlManyDecl [] [] env md
+  | RecDecl (id, FunExp (fid, e))
+      -> let dummyenv = ref Environment.empty
+	 in let proc = (ProcV (fid, e, dummyenv))
+	    in let newenv = Environment.extend id proc env
+	       in dummyenv := newenv;
+	       ([id], newenv, [proc])
   | NoneDecl -> ([], env, [])
   | _ -> raise (Error "erro in pattern match in eval decl")
 (*

@@ -26,7 +26,9 @@ rule main = parse
 | ")" { Parser.RPAREN }
 | ";;" { Parser.SEMISEMI }
 | "+" { Parser.PLUS }
+| "-" { Parser.MINUS }
 | "*" { Parser.MULT }
+| "/" { Parser.DIV}
 | "(" " "* (['=' '<' '>' '@' '^' '|' '&' '+' '-' '*' '/' '$' '%'] ['!' '$' '%' '*' '+' '-' '.' '/' ':' '<' '=' '>' '?' '@' '^' '|' '~']* as mid) " "* ")"
     { Parser.PMID mid }
 | "<" { Parser.LT }

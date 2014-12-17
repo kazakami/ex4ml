@@ -1,7 +1,7 @@
 (* ML interpreter / type reconstruction *)
 type id = string
 
-type binOp = Plus | Mult | Lt | LAnd | LOr
+type binOp = Plus | Minus | Mult | Div | Lt | LAnd | LOr
 
 type exp =
     Var of id
@@ -25,4 +25,4 @@ type program =
   | AndDecl of program * program
   | Decl of id * exp
   | NoneDecl
-  | RecDecl of id * id * exp
+  | RecDecl of id * exp

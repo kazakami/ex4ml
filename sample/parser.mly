@@ -3,7 +3,7 @@ open Syntax
 %}
 
 %token LPAREN RPAREN SEMISEMI
-%token LOR LAND PLUS MULT LT
+%token LOR LAND PLUS MINUS MULT DIV LT
 %token IF THEN ELSE TRUE FALSE
 %token LET IN EQ AND REC
 
@@ -33,10 +33,19 @@ LetsAnd :
     AND DeclExpr { AndDecl ($2, NoneDecl) }
   | AND DeclExpr LetsAnd { AndDecl ($2, $3) }
 
+//LetsRecAnd :
+//AND Ident EQ FunExpr { 
+
 Lets :
     LET DeclExpr { ManyDecl (AndDecl ($2, NoneDecl), NoneDecl) }
+  | LET REC Ident EQ FunExpr { ManyDecl (AndDecl (RecDecl ($3, $5), NoneDecl), NoneDecl) }
+  | LET REC Ident FunDecl { RecDecl ($3, $4) }
+
   | LET Ident EQ Expr LetsAnd  { ManyDecl (AndDecl(Decl ($2, $4), $5), NoneDecl) }
   | LET Ident FunDecl LetsAnd { ManyDecl (AndDecl (Decl ($2, $3), $4), NoneDecl) }
+  | LET REC Ident EQ FunExpr LetsAnd { ManyDecl (AndDecl (RecDecl ($3, $5), $6), NoneDecl) }      
+  | LET REC Ident FunDecl LetsAnd { ManyDecl (AndDecl (RecDecl ($3, $4), $5), NoneDecl) }      
+
   | LET DeclExpr Lets { ManyDecl (AndDecl($2, NoneDecl), $3) }
   | LET Ident EQ Expr LetsAnd Lets { ManyDecl (AndDecl(Decl ($2, $4), $5), $6) }
   | LET Ident FunDecl LetsAnd Lets { ManyDecl (AndDecl (Decl ($2, $3), $4), $5) }
@@ -78,10 +87,12 @@ LTExpr :
 
 PExpr :
     PExpr PLUS MExpr { BinOp (Plus, $1, $3) }
+  | PExpr MINUS MExpr { BinOp (Minus, $1, $3) }
   | MExpr { $1 }
 
 MExpr : 
     MExpr MULT AppExpr { BinOp (Mult, $1, $3) }
+  | MExpr DIV AppExpr { BinOp (Div, $1, $3) }
   | AppExpr { $1 }
 
 AppExpr :
