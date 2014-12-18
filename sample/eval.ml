@@ -4,11 +4,33 @@ type 'a maybe =
   Nothing
 | Just of 'a
 
+
+let rec unzip = function
+  | [] -> ([],[])
+  | (a, b) :: xs -> 
+    let (at, bt) = unzip xs
+    in (a::at, b::bt)
+
+let rec unzip3 = function
+  | [] -> ([],[],[])
+  | (a, b, c) :: xs -> 
+    let (at, bt, ct) = unzip3 xs
+    in (a::at, b::bt, c::ct)
+
+let rec zip a =
+  function [] -> []
+    | x::xs -> match a with
+	| [] -> []
+	| hd::tl -> (hd, x) :: (zip tl xs);;
+
+
+
 type exval = 
     IntV of int
   | BoolV of bool
   | ProcV of id * exp * dnval Environment.t ref
   | DProcV of id * exp
+  | ListV of exval list
 and dnval = exval
 
 exception Error of string
@@ -20,7 +42,12 @@ let rec string_of_exval = function
     IntV i -> string_of_int i
   | BoolV b -> string_of_bool b
   | ProcV _ -> "<fun>"
-  | DProcV _ -> "<fun>"
+  | DProcV _ -> "<dfun>"
+  | ListV [] -> "[]"
+  | ListV l ->
+    let str = (List.fold_right (fun x y -> x ^ "; " ^ y)
+		 (List.map string_of_exval l) "")
+    in "[" ^ String.sub str 0 (String.length str - 2)  ^ "]"
 
 let pp_val v = print_string (string_of_exval v)
 
@@ -88,6 +115,27 @@ let rec eval_exp env = function
   | AndExp _ | AndEnd -> raise (Error "error in and")
   | FunExp (id, exp) -> ProcV (id, exp, ref env)
   | DFunExp (id, exp) -> DProcV (id, exp)
+
+  | LetRecAndExp (andexp, e) ->
+    let rec andList env = function
+      | AndExp (RecDeclare (ident, FunExp (fid, fe)), nextExp)
+	  -> let dummyenv = ref Environment.empty
+	     in let proc = ProcV (fid, fe, dummyenv)
+		in (ident, proc, Just dummyenv)
+		     :: (andList env nextExp)
+      | AndExp (RecDeclare (ident, exp), nextExp)
+	  -> (ident, eval_exp env exp, Nothing)
+	       :: (andList env nextExp)
+      | AndEnd -> []
+      | _ -> raise (Error "err in LetRecAndExp")
+    in let (idList, vList, dmyEnvList) = unzip3 (andList env andexp)
+       in let newenv = env_extend env (zip idList vList)
+	  in let rec dummyWrite = function
+                                  | [] -> ()
+                                  | Nothing::xs -> dummyWrite xs
+		   	          | (Just d)::xs -> d := newenv;
+				                    dummyWrite xs
+	     in dummyWrite dmyEnvList; eval_exp newenv e
   | AppExp (exp1, exp2) ->
     let funval = eval_exp env exp1 in
     let arg = eval_exp env exp2 in
@@ -99,33 +147,19 @@ let rec eval_exp env = function
       let newenv = Environment.extend id arg !env' in
       eval_exp newenv body
     | _ -> err ("Non-function value is applied"))
-  | LetRecExp (id, para, exp1, exp2) ->
+  | LetRecExp (id, FunExp(para, exp1), exp2) ->
     let dummyenv = ref Environment.empty in
     let newenv =
       Environment.extend id (ProcV (para, exp1, dummyenv)) env in
     dummyenv := newenv;
     eval_exp newenv exp2
+  | ListLit (head, tail) ->
+    (match eval_exp env tail with
+    | ListV l -> ListV ((eval_exp env head) :: l)
+    | _ -> err "err in List")
+  | EmpList -> ListV []
   | _ -> err "err in pattern match in eval_exp"
 
-
-
-let rec unzip = function
-  | [] -> ([],[])
-  | (a, b) :: xs -> 
-    let (at, bt) = unzip xs
-    in (a::at, b::bt)
-
-let rec unzip3 = function
-  | [] -> ([],[],[])
-  | (a, b, c) :: xs -> 
-    let (at, bt, ct) = unzip3 xs
-    in (a::at, b::bt, c::ct)
-
-let rec zip a =
-  function [] -> []
-    | x::xs -> match a with
-	| [] -> []
-	| hd::tl -> (hd, x) :: (zip tl xs);;
 
 
 let rec eval_decl env = function
@@ -139,13 +173,7 @@ let rec eval_decl env = function
       | AndDecl (RecDecl (id, FunExp (fid, e)), decl2)
 	  -> let dummyenv = ref Environment.empty
 	     in let proc = (ProcV (fid, e, dummyenv))
-		in let newenv = Environment.extend id proc env
-		   in (id, proc, Just dummyenv) :: (evlAndDecl env decl2)
-(*
-	(match eval_decl env decl1 with
-	  | (id::_, _, e::_) -> (id, e) :: (evlAndDecl env decl2)
-	  | _ -> raise (Error "error in rec decl"))
-*)
+		in (id, proc, Just dummyenv) :: (evlAndDecl env decl2)
       | NoneDecl -> []
       | _ -> raise (Error "Error in \"let and\" declare")
     in let rec evlManyDecl ids vs env = function

@@ -6,6 +6,9 @@ open Syntax
 %token LOR LAND PLUS MINUS MULT DIV LT
 %token IF THEN ELSE TRUE FALSE
 %token LET IN EQ AND REC
+%token EMPLIST APPEND
+%token LSPAREN RSPAREN SEMIC
+%token MATCH WITH PIPE
 
 %token <int> INTV
 %token <bool> BOOLV
@@ -63,6 +66,7 @@ Expr :
   | LetExpr { $1 }
   | LOExpr { $1 }
   | FunExpr { $1 }
+  | ListExpr { $1 }
 
 AndExpr :
     AND Ident EQ Expr { AndExp (Declare ($2, $4), AndEnd) }
@@ -70,13 +74,40 @@ AndExpr :
   | AND Ident EQ Expr AndExpr { AndExp (Declare ($2, $4), $5) }
   | AND Ident FunDecl AndExpr { AndExp (Declare ($2, $3), $4) }
 
+AndRecExpr :
+    AND Ident EQ FunExpr { AndExp (RecDeclare ($2, $4), AndEnd) }
+  | AND Ident EQ Expr { AndExp (RecDeclare ($2, $4), AndEnd) }
+  | AND Ident FunDecl { AndExp (RecDeclare ($2, $3), AndEnd) }
+  | AND Ident EQ FunExpr AndRecExpr
+      { AndExp (RecDeclare ($2, $4), $5) }
+  | AND Ident EQ Expr AndRecExpr
+      { AndExp (RecDeclare ($2, $4), $5) }
+  | AND Ident FunDecl AndRecExpr
+      { AndExp (RecDeclare ($2, $3), $4) }
+
 LetExpr :
     LET Ident EQ Expr IN Expr { LetExp (Declare ($2, $4), $6) }
   | LET Ident FunDecl IN Expr { LetExp (Declare ($2, $3), $5) }
   | LET REC Ident EQ FUN Ident RARROW Expr IN Expr
-      { LetRecExp ($3, $6, $8, $10) }
-  | LET Ident EQ Expr AndExpr IN Expr { LetandExp (AndExp(Declare ($2, $4), $5), $7) }
-  | LET Ident FunDecl AndExpr IN Expr { LetandExp (AndExp(Declare ($2, $3), $4), $6) }
+      { LetRecExp ($3, FunExp($6, $8), $10) }
+  | LET REC Ident FunDecl IN Expr { LetRecExp ($3, $4, $6) }
+
+  | LET Ident EQ Expr AndExpr IN Expr
+      { LetandExp (AndExp(Declare ($2, $4), $5), $7) }
+  | LET Ident FunDecl AndExpr IN Expr
+      { LetandExp (AndExp(Declare ($2, $3), $4), $6) }
+/*
+  | LET REC Ident EQ FunExpr AND Ident EQ FunExpr IN Expr
+      { LetRecAndExp (AndExp (RecDeclare ($3, $5),
+			      AndExp (RecDeclare ($7, $9),
+                                      AndEnd)), $11) }
+*/
+  | LET REC Ident EQ FunExpr AndRecExpr IN Expr
+      { LetRecAndExp (AndExp (RecDeclare ($3, $5), $6), $8) }
+  | LET REC Ident EQ Expr AndRecExpr IN Expr
+      { LetRecAndExp (AndExp (RecDeclare ($3, $5), $6), $8) }
+  | LET REC Ident FunDecl AndRecExpr IN Expr
+      { LetRecAndExp (AndExp (RecDeclare ($3, $4), $5), $7) }
 
 LOExpr :
     LAExpr LOR LAExpr { BinOp (LOr, $1, $3) }
@@ -123,7 +154,18 @@ Ident :
 
 IfExpr :
     IF Expr THEN Expr ELSE Expr { IfExp ($2, $4, $6) }
+/*
+MatchCond :
+    INTV {}
+  | TRUE {}
+  | FALSE{}
+  | ID {}
+  | EMPLIST {}
+  | 
 
+MatchExpr :
+MATCH Expr WITH 
+*/
 Fun_ :
     Ident RARROW Expr { FunExp ($1, $3) }
   | Ident Fun_ { FunExp ($1, $2) }
@@ -137,4 +179,14 @@ FunExpr :
   | FUN Ident Fun_ { FunExp ($2, $3) }
   | DFUN Ident RARROW Expr { DFunExp ($2, $4) }
 //  | DFUN Ident DFun_ { DFunExp ($2, $3) }
+
+List_ :
+    Expr { ListLit ($1, EmpList) }
+  | Expr SEMIC { ListLit ($1, EmpList) }
+  | Expr SEMIC List_ { ListLit ($1, $3) }
+
+ListExpr :
+    EMPLIST { EmpList }
+  | Expr APPEND ListExpr { ListLit ($1, $3) }
+  | LSPAREN List_ RSPAREN { $2 }
 
