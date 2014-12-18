@@ -33,8 +33,13 @@ LetsAnd :
     AND DeclExpr { AndDecl ($2, NoneDecl) }
   | AND DeclExpr LetsAnd { AndDecl ($2, $3) }
 
-//LetsRecAnd :
-//AND Ident EQ FunExpr { 
+LetsRecAnd :
+    AND Ident EQ FunExpr { AndDecl (RecDecl ($2, $4), NoneDecl) }
+  | AND Ident FunDecl { AndDecl (RecDecl ($2, $3), NoneDecl) }
+  | AND Ident EQ Expr { AndDecl (Decl ($2, $4), NoneDecl) }
+  | AND Ident EQ FunExpr LetsRecAnd{ AndDecl (RecDecl ($2, $4), $5) }
+  | AND Ident FunDecl LetsRecAnd { AndDecl (RecDecl ($2, $3), $4) }
+  | AND Ident EQ Expr LetsRecAnd{ AndDecl (Decl ($2, $4), $5) }
 
 Lets :
     LET DeclExpr { ManyDecl (AndDecl ($2, NoneDecl), NoneDecl) }
@@ -43,8 +48,11 @@ Lets :
 
   | LET Ident EQ Expr LetsAnd  { ManyDecl (AndDecl(Decl ($2, $4), $5), NoneDecl) }
   | LET Ident FunDecl LetsAnd { ManyDecl (AndDecl (Decl ($2, $3), $4), NoneDecl) }
-  | LET REC Ident EQ FunExpr LetsAnd { ManyDecl (AndDecl (RecDecl ($3, $5), $6), NoneDecl) }      
-  | LET REC Ident FunDecl LetsAnd { ManyDecl (AndDecl (RecDecl ($3, $4), $5), NoneDecl) }      
+  | LET REC Ident EQ FunExpr LetsRecAnd { ManyDecl (AndDecl (RecDecl ($3, $5), $6), NoneDecl) }
+  | LET REC Ident FunDecl LetsRecAnd { ManyDecl (AndDecl (RecDecl ($3, $4), $5), NoneDecl) }
+
+//  | LET REC Ident EQ FunExpr LetsAnd { ManyDecl (AndDecl (RecDecl ($3, $5), $6), NoneDecl) }
+//  | LET REC Ident FunDecl LetsAnd { ManyDecl (AndDecl (RecDecl ($3, $4), $5), NoneDecl) }
 
   | LET DeclExpr Lets { ManyDecl (AndDecl($2, NoneDecl), $3) }
   | LET Ident EQ Expr LetsAnd Lets { ManyDecl (AndDecl(Decl ($2, $4), $5), $6) }

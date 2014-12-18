@@ -115,6 +115,19 @@ let rec unzip = function
     let (at, bt) = unzip xs
     in (a::at, b::bt)
 
+let rec unzip3 = function
+  | [] -> ([],[],[])
+  | (a, b, c) :: xs -> 
+    let (at, bt, ct) = unzip3 xs
+    in (a::at, b::bt, c::ct)
+
+let rec zip a =
+  function [] -> []
+    | x::xs -> match a with
+	| [] -> []
+	| hd::tl -> (hd, x) :: (zip tl xs);;
+
+
 let rec eval_decl env = function
     Exp e -> let v = eval_exp env e in (["-"], env, [v])
   | Decl (id, e) ->
@@ -122,18 +135,29 @@ let rec eval_decl env = function
   | (ManyDecl _) as md ->
     let rec evlAndDecl env = function
       | AndDecl (Decl (i, e), decl2) -> 
-	(i, eval_exp env e) :: (evlAndDecl env decl2)
-      | AndDecl ((RecDecl _) as decl1, decl2) ->
+	(i, eval_exp env e, Nothing) :: (evlAndDecl env decl2)
+      | AndDecl (RecDecl (id, FunExp (fid, e)), decl2)
+	  -> let dummyenv = ref Environment.empty
+	     in let proc = (ProcV (fid, e, dummyenv))
+		in let newenv = Environment.extend id proc env
+		   in (id, proc, Just dummyenv) :: (evlAndDecl env decl2)
+(*
 	(match eval_decl env decl1 with
 	  | (id::_, _, e::_) -> (id, e) :: (evlAndDecl env decl2)
 	  | _ -> raise (Error "error in rec decl"))
+*)
       | NoneDecl -> []
       | _ -> raise (Error "Error in \"let and\" declare")
     in let rec evlManyDecl ids vs env = function
       | ManyDecl (decl1, decl2) ->
 	let addingList = evlAndDecl env decl1
-	in let (id, v) = unzip addingList
-	   in evlManyDecl (ids@id) (vs@v) (env_extend env addingList) decl2
+	in let (id, v, prcList) = unzip3 addingList
+	   in let newenv = env_extend env (zip id v)
+	      in let rec dummyWrite = function [] -> ()
+	                                     | Nothing::xs -> dummyWrite xs
+					     | (Just d)::xs -> d := newenv; dummyWrite xs
+		 in dummyWrite prcList;
+		 evlManyDecl (ids@id) (vs@v) newenv decl2
       | NoneDecl -> (ids, env, vs)
       | _ -> raise (Error "Error in \"let and\" declare")
        in evlManyDecl [] [] env md
