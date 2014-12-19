@@ -107,13 +107,24 @@ let rec eval_exp env = function
   | MatchExp (p, c) -> (* p:pattern, c:cond *)
     let rec trial = function
       | MatchCondAndExp (cond, exp, nextCond) ->
-	let subtrial pat = function
+	let rec subtrial pat = function
 	  (* 評価済みのパターンと条件式を受け取り、
 	     マッチしたかどうかと環境に追加すべき識別子のリストとその値のリストのタプルを返す。 *)
 	  | ILit i -> ((match pat with IntV i_ -> i = i_ | _ -> false), [], [])
 	  | BLit b -> ((match pat with BoolV b_ -> b = b_ | _ -> false), [], [])
 	  | EmpList -> ((match pat with ListV [] -> true | _ -> false), [], [])
 	  | Underscore -> (true, [], [])
+	  | Var id -> (true, [id], [pat])
+	  | ListLit (head, tail) ->
+	    (match pat with
+	      ListV (patH :: patT) ->
+		let (resultH, idsH, vsH) = subtrial patH head
+		and (resultT, idsT, vsT) = subtrial (ListV patT) tail
+		in if resultH && resultT
+		  then (true, idsH@idsT, vsH@vsT)
+		  else (false, [], [])
+	    | _ -> (false, [], [])
+	    )
 	  | _ -> (false, [], [])
 	in let (result, ids, vs) = subtrial (eval_exp env p) cond
 	   in if result
