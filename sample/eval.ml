@@ -80,6 +80,8 @@ let rec apply_prim op arg1 arg2 = match op, arg1, arg2 with
   | LAnd, _, _ -> err ("Both arguments must be bool: &&")
   | LOr, BoolV b1, BoolV b2 -> BoolV (b1 || b2)
   | LOr, _, _ -> err ("Both arguments must be bool: ||")
+  | Append, head, ListV l -> ListV (head::l)
+  | Append, _, _ -> err ("Right arguments must be list: ::")
 
 let rec env_extend env =
   function
@@ -102,6 +104,23 @@ let rec eval_exp env = function
             BoolV true -> eval_exp env exp2 
           | BoolV false -> eval_exp env exp3
           | _ -> err ("Test expression must be boolean: if"))
+  | MatchExp (p, c) -> (* p:pattern, c:cond *)
+    let rec trial = function
+      | MatchCondAndExp (cond, exp, nextCond) ->
+	let subtrial pat = function
+	  (* 評価済みのパターンと条件式を受け取り、
+	     マッチしたかどうかと環境に追加すべき識別子のリストとその値のリストのタプルを返す。 *)
+	  | ILit i -> ((match pat with IntV i_ -> i = i_ | _ -> false), [], [])
+	  | BLit b -> ((match pat with BoolV b_ -> b = b_ | _ -> false), [], [])
+	  | EmpList -> ((match pat with ListV [] -> true | _ -> false), [], [])
+	  | Underscore -> (true, [], [])
+	  | _ -> (false, [], [])
+	in let (result, ids, vs) = subtrial (eval_exp env p) cond
+	   in if result
+	     then eval_exp (env_extend env (zip ids vs)) exp
+	     else trial nextCond
+      | MatchCondEnd | _ -> err ("Pattern Match failure")
+    in trial c
   | LetExp (Declare (id, exp1), exp2) ->
     let value = eval_exp env exp1 in
     eval_exp (Environment.extend id value env) exp2

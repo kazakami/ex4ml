@@ -1,7 +1,7 @@
 (* ML interpreter / type reconstruction *)
 type id = string
 
-type binOp = Plus | Minus | Mult | Div | Lt | LAnd | LOr
+type binOp = Append | Plus | Minus | Mult | Div | Lt | LAnd | LOr
 
 type exp =
     Var of id
@@ -22,6 +22,10 @@ type exp =
   | AppExp of exp * exp
   | LetRecExp of id * exp * exp
   | LetRecAndExp of exp * exp
+  | Underscore
+  | MatchCondAndExp of exp * exp * exp (* 条件式と返す式の組と次の組*)
+  | MatchCondEnd
+  | MatchExp of exp * exp (* マッチさせる式と条件式リスト *)
 
 type program = 
     Exp of exp

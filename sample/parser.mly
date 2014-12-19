@@ -8,7 +8,7 @@ open Syntax
 %token LET IN EQ AND REC
 %token EMPLIST APPEND
 %token LSPAREN RSPAREN SEMIC
-%token MATCH WITH PIPE
+%token MATCH WITH PIPE UNDERSCORE
 
 %token <int> INTV
 %token <bool> BOOLV
@@ -63,10 +63,10 @@ Lets :
 
 Expr :
     IfExpr { $1 }
+  | MatchExpr { $1 }
   | LetExpr { $1 }
   | LOExpr { $1 }
   | FunExpr { $1 }
-  | ListExpr { $1 }
 
 AndExpr :
     AND Ident EQ Expr { AndExp (Declare ($2, $4), AndEnd) }
@@ -118,11 +118,12 @@ LAExpr :
   | LTExpr { $1 }
 
 LTExpr : 
-    LTExpr LT PExpr { BinOp (Lt, $1, $3) }
-  | PExpr { $1 }
+    LTExpr LT AppendExpr { BinOp (Lt, $1, $3) }
+  | AppendExpr { $1 }
 
-//MidExpr :
-//MidExpr MID
+AppendExpr :
+    PExpr APPEND AppendExpr { BinOp (Append, $1, $3) }
+  | PExpr { $1 }
 
 PExpr :
     PExpr PLUS MExpr { BinOp (Plus, $1, $3) }
@@ -145,27 +146,45 @@ AExpr :
   | ID { Var $1 }
   | PMID { Var $1 }
   | LPAREN Expr RPAREN { $2 }
+  | EMPLIST { EmpList }
+  | ListExpr { $1 }
 
 
 Ident :
     ID { $1 }
   | PMID { $1 }
 
-
 IfExpr :
     IF Expr THEN Expr ELSE Expr { IfExp ($2, $4, $6) }
-/*
+
+MatchCondList_ :
+    MatchCond { ListLit ($1, EmpList) }
+  | MatchCond SEMIC { ListLit ($1, EmpList) }
+  | MatchCond SEMIC MatchCondList_ { ListLit ($1, $3) }
+
+MatchCondElem :
+    INTV { ILit $1 }
+  | TRUE { BLit true }
+  | FALSE{ BLit false }
+  | ID { Var $1 }
+  | EMPLIST { EmpList }
+  | UNDERSCORE { Underscore }
+  | LSPAREN MatchCondList_ RSPAREN { $2 }
+
 MatchCond :
-    INTV {}
-  | TRUE {}
-  | FALSE{}
-  | ID {}
-  | EMPLIST {}
-  | 
+    MatchCondElem { $1 }
+  | MatchCondElem APPEND MatchCond { ListLit ($1, $3) }
+
+MatchCondAndExpr :
+    PIPE MatchCond RARROW Expr { MatchCondAndExp ($2, $4, MatchCondEnd) }
+  | PIPE MatchCond RARROW Expr MatchCondAndExpr { MatchCondAndExp ($2, $4, $5) }
 
 MatchExpr :
-MATCH Expr WITH 
-*/
+    MATCH Expr WITH MatchCond RARROW Expr { MatchExp ($2, MatchCondAndExp ($4, $6, MatchCondEnd)) }
+  | MATCH Expr WITH MatchCond RARROW Expr MatchCondAndExpr
+      { MatchExp ($2, MatchCondAndExp ($4, $6, $7)) }
+  | MATCH Expr WITH MatchCondAndExpr { MatchExp ($2, $4) }
+
 Fun_ :
     Ident RARROW Expr { FunExp ($1, $3) }
   | Ident Fun_ { FunExp ($1, $2) }
