@@ -23,7 +23,9 @@ parser.output
 syntax.cmi
 syntax.cmo
 syntax.cmx
-
+typing.cmi
+typing.cmo
+typing.cmx
 
 
 

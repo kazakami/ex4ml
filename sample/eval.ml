@@ -51,20 +51,6 @@ let rec string_of_exval = function
 
 let pp_val v = print_string (string_of_exval v)
 
-let print_type_val id v =
-  Printf.printf "val %s = " id;
-  pp_val v;
-  print_newline();
-  ()
-
-let rec print_type_vals id v =
-  match (id, v) with
-  | ([], _) -> ()
-  | (_, []) -> ()
-  | ((idh::idt), (vh::vt))
-    -> print_type_val idh vh;
-      print_type_vals idt vt
-
 let rec apply_prim op arg1 arg2 = match op, arg1, arg2 with
     Plus, IntV i1, IntV i2 -> IntV (i1 + i2)
   | Plus, _, _ -> err ("Both arguments must be integer: +")

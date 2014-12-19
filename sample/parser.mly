@@ -62,9 +62,7 @@ Lets :
   | LET Ident FunDecl LetsAnd Lets { ManyDecl (AndDecl (Decl ($2, $3), $4), $5) }
 
 Expr :
-    IfExpr { $1 }
-  | MatchExpr { $1 }
-  | LetExpr { $1 }
+    LetExpr { $1 }
   | LOExpr { $1 }
   | FunExpr { $1 }
 
@@ -143,6 +141,8 @@ AExpr :
     INTV { ILit $1 }
   | TRUE { BLit true }
   | FALSE { BLit false }
+  | IfExpr { $1 }
+  | MatchExpr { $1 }
   | ID { Var $1 }
   | PMID { Var $1 }
   | LPAREN Expr RPAREN { $2 }
