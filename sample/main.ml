@@ -56,4 +56,10 @@ let initial_tyenv =
     [("i", TyInt); ("v", TyInt)]
     Environment.empty
 
-let _ = read_eval_print initial_env initial_tyenv
+let _ =
+  let alpha = fresh_tyvar () in
+  let beta = fresh_tyvar () in
+  print_string (string_of_ty (subst_type [(beta, (TyFun (TyVar alpha, TyInt))); (alpha, TyBool)] (TyVar beta)))
+
+
+(*let _ = read_eval_print initial_env initial_tyenv*)

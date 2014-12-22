@@ -7,11 +7,32 @@ let err s = raise (Error s)
 (* Type Environment *)
 type tyenv = ty Environment.t
 
+type subst = (tyvar * ty) list
+
+let rec subst_type l = function
+  | (TyVar i) as t ->
+    (match l with
+      [] -> t
+    | (id, y)::xs
+      -> if id = i
+	then subst_type xs y
+	else subst_type xs t)
+  | TyFun (t1, t2) -> TyFun ((subst_type l t1), (subst_type l t2))
+  | x -> x
+      
 let ty_prim op ty1 ty2 =
   match op with
-    Plus ->
+    Plus | Minus | Mult | Div ->
       (match ty1, ty2 with
 	TyInt, TyInt -> TyInt
+      | _ -> err ("Argument must be of integer: +-*/"))
+  | Lt ->
+      (match ty1, ty2 with
+	TyInt, TyInt -> TyBool
+      | _ -> err ("Argument must be of integer: <"))
+  | LAnd | LOr ->
+      (match ty1, ty2 with
+	TyBool, TyBool -> TyBool
       | _ -> err ("Argument must be of integer: +"))
   | _ -> err "Not Implemented!"
 
@@ -28,9 +49,12 @@ let rec ty_exp tyenv = function
   | IfExp (exp1, exp2, exp3) ->
     if ty_exp tyenv exp1 = TyBool
     then
-      (if ty_exp tyenv exp1 = ty_exp tyenv exp2
-       then ty_exp tyenv exp1
-       else err ("then and else expression must be same type!"))
+      (let t2 = ty_exp tyenv exp2
+       and t3= ty_exp tyenv exp3
+       in if t2 = t3
+	 then t2
+	 else err ("then and else expression must be same type! "
+		   ^ string_of_ty t2 ^ " " ^ string_of_ty t3))
     else err ("Condition must be bool!")
   | LetExp (Declare (id, exp1), exp2) ->
     ty_exp (Environment.extend id (ty_exp tyenv exp1) tyenv) exp2
@@ -38,4 +62,4 @@ let rec ty_exp tyenv = function
 
 let ty_decl tyenv = function
     Exp e -> [ty_exp tyenv e]
-  | _ -> err ("Not Implemented!")
+  | _ -> err ("Not Implemented in decl!")
