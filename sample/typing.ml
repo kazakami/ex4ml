@@ -47,31 +47,46 @@ let rec subst_eqs s eqs =
 	   
 let ty_prim op ty1 ty2 =
   match op with
-    Plus | Minus | Mult | Div ->
-      (match ty1, ty2 with
-	TyInt, TyInt -> TyInt
-      | _ -> err ("Argument must be of integer: +-*/"))
-  | Lt ->
-      (match ty1, ty2 with
-	TyInt, TyInt -> TyBool
-      | _ -> err ("Argument must be of integer: <"))
-  | LAnd | LOr ->
-      (match ty1, ty2 with
-	TyBool, TyBool -> TyBool
-      | _ -> err ("Argument must be of integer: +"))
+    Plus | Minus | Mult | Div -> ([(ty1, TyInt); (ty2, TyInt)], TyInt)
+  | Lt -> ([(ty1, TyInt); (ty2, TyInt)], TyBool)
+  | LAnd | LOr -> ([(ty1, TyBool); (ty2, TyBool)], TyBool)
   | _ -> err "Not Implemented!"
 
+	     
+let rec unify =
+  function
+    [] -> []
+  | (TyInt, TyInt) :: xs -> unify xs
+  | (TyBool, TyBool) :: xs -> unify xs
+  | (TyVar a, t) :: xs -> if MySet.member a (freevar_ty t)
+			  then err ("err in unify")
+			  else (a, t) :: (unify (subst_eqs [(a, t)] xs))
+  | (t, TyVar a) :: xs -> unify ((TyVar a, t) :: xs)
+  | _ -> err "err in unify"
+
+
+	     
 let rec ty_exp tyenv = function
     Var x ->
-      (try Environment.lookup x tyenv with
+      (try ([], Environment.lookup x tyenv) with
 	Environment.Not_bound -> err ("variable not bound: " ^ x))
-  | ILit _ -> TyInt
-  | BLit _ -> TyBool
+  | ILit _ -> ([], TyInt)
+  | BLit _ -> ([], TyBool)
   | BinOp (op, exp1, exp2) ->
-    let tyarg1 = ty_exp tyenv exp1 in
-    let tyarg2 = ty_exp tyenv exp2 in
-    ty_prim op tyarg1 tyarg2
+    let (s1, ty1) = ty_exp tyenv exp1 in
+    let (s2, ty2) = ty_exp tyenv exp2 in
+    let (eqs3, ty) = ty_prim op ty1 ty2 in
+    let eqs = (eqs_of_subst s1) @ (eqs_of_subst s2) @ eqs3 in
+    let s3 = unify eqs
+    in (s3, subst_type s3 ty)
   | IfExp (exp1, exp2, exp3) ->
+     let (s1, ty1) = ty_exp tyenv exp1 in
+     let (s2, ty2) = ty_exp tyenv exp2 in
+     let (s3, ty3) = ty_exp tyenv exp3 in
+     let eqs = (eqs_of_subst s1) @ (eqs_of_subst s2) @ (eqs_of_subst s3) @ [(ty1, TyBool); (ty2, ty3)] in
+     let s4 = unify eqs
+     in (s4, subst_type s4 ty2)
+     (*
     if ty_exp tyenv exp1 = TyBool
     then
       (let t2 = ty_exp tyenv exp2
@@ -80,27 +95,33 @@ let rec ty_exp tyenv = function
 	 then t2
 	 else err ("then and else expression must be same type! "
 		   ^ string_of_ty t2 ^ " " ^ string_of_ty t3))
-    else err ("Condition must be bool!")
+    else err ("Condition must be bool!")*)
   | LetExp (Declare (id, exp1), exp2) ->
-    ty_exp (Environment.extend id (ty_exp tyenv exp1) tyenv) exp2
+     let (s1, ty1) = ty_exp tyenv exp1 in
+     let (s2, ty2) = ty_exp (Environment.extend id ty1 tyenv) exp2 in
+     let eqs = (eqs_of_subst s1) @ (eqs_of_subst s2) in
+     let s3 = unify eqs
+     in (s3, subst_type s3 ty2)
+     (*
+     ty_exp (Environment.extend id (ty_exp tyenv exp1) tyenv) exp2*)
+  | FunExp (id, exp) ->
+     let domty = TyVar (fresh_tyvar ()) in
+     let s, ranty =
+       ty_exp (Environment.extend id domty tyenv) exp in
+     (s, TyFun (subst_type s domty, ranty))
+  | AppExp (exp1, exp2) ->
+     let (s1, ty1) = ty_exp tyenv exp1 in
+     let (s2, ty2) = ty_exp tyenv exp2
+     in (match ty1 with
+	   TyFun (tyf1, tyf2) -> let eqs = (eqs_of_subst s1) @ (eqs_of_subst s2) @ [(tyf1, ty2)] in
+				 let s3 = unify eqs
+				 in (s3, subst_type s3 tyf2)
+	 | _ -> err ("not a function"))
   | _ -> err ("Not Implemented!")
-
+	     
 let ty_decl tyenv = function
     Exp e -> [ty_exp tyenv e]
   | _ -> err ("Not Implemented in decl!")
-
-
-let rec unify =
-  function
-    [] -> []
-  | (TyInt, TyInt) :: xs -> xs
-  | (TyBool, TyBool) :: xs -> xs
-  | (TyVar a, t) :: xs -> if MySet.member a (freevar_ty t)
-			  then err ("err in unify")
-			  else (TyVar a, t) :: (unify (subst_eqs [(a, t)] xs))
-  | (t, TyVar a) :: xs -> unify ((TyVar a, t) :: xs)
-  | _ -> err "err in unify"
-
 
 
 

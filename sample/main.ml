@@ -16,7 +16,7 @@ let rec print_type_vals id v t =
   | ([], _, _) -> ()
   | (_, [], _) -> ()
   | (_, _, []) -> ()
-  | ((idh::idt), (vh::vt), (th::tt))
+  | ((idh::idt), (vh::vt), ((_, th)::tt))
     -> print_type_val idh vh th;
       print_type_vals idt vt tt
 
