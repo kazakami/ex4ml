@@ -83,7 +83,7 @@ let rec ty_exp tyenv = function
      let (s1, ty1) = ty_exp tyenv exp1 in
      let (s2, ty2) = ty_exp tyenv exp2 in
      let (s3, ty3) = ty_exp tyenv exp3 in
-     let eqs = (eqs_of_subst s1) @ (eqs_of_subst s2) @ (eqs_of_subst s3) @ [(ty1, TyBool); (ty2, ty3)] in
+     let eqs =  [(ty2, ty3); (ty1, TyBool)] @ (eqs_of_subst s1) @ (eqs_of_subst s2) @ (eqs_of_subst s3) in
      let s4 = unify eqs
      in (s4, subst_type s4 ty2)
      (*
