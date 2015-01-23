@@ -59,7 +59,8 @@ let rec read_eval_print env tyenv =
        read_eval_print newenv tyenv) with
   | Error s -> print_endline s; read_eval_print env tyenv
   | Failure s -> print_endline s; read_eval_print env tyenv
-  | _ -> print_endline "a error occurred"; read_eval_print env tyenv
+  | e -> raise e
+(*  | _ -> print_endline "a error occurred"; read_eval_print env tyenv *)
 
 
 let env_add str env =

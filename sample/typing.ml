@@ -9,6 +9,13 @@ type tyenv = ty Environment.t
 
 type subst = (tyvar * ty) list
 
+let rec unzip = function
+  | [] -> ([],[])
+  | (a, b) :: xs -> 
+    let (at, bt) = unzip xs
+    in (a::at, b::bt)
+
+			  
 let rec string_of_subst l =
   match l with
     [] -> ""
@@ -73,6 +80,10 @@ let rec unify =
     [] -> []
   | (TyInt, TyInt) :: xs -> unify xs
   | (TyBool, TyBool) :: xs -> unify xs
+  | (TyList t1, TyList t2) :: xs
+    -> if string_of_ty t1 = string_of_ty t2
+       then unify xs
+       else err "err in unify : unsame list"
   | (TyVar a, TyVar b) :: xs -> if a = b
 				then unify xs
 				else (a, TyVar b) :: (unify (subst_eqs [(a, TyVar b)] xs))
@@ -84,7 +95,7 @@ let rec unify =
     -> if string_of_ty t1 = string_of_ty t2
        then unify xs
        else unify ((t11, t21) :: (t12, t22) :: xs)
-  | _ -> err "err in unify"
+  | _ -> err "err in unify not : not match"
 
 	     
 let rec ty_exp tyenv = function
@@ -111,6 +122,50 @@ let rec ty_exp tyenv = function
      let eqs =  [(ty2, ty3); (ty1, TyBool)] @ (eqs_of_subst s1) @ (eqs_of_subst s2) @ (eqs_of_subst s3) in
      let s4 = unify eqs
      in (s4, subst_type s4 ty2)
+  | MatchExp (p, c) ->
+     let rec eqsList_of_subsetList = function
+	 [] -> []
+       | s :: ss -> eqs_of_subst s @ eqsList_of_subsetList ss in
+     let rec extend tyenv ids ts =
+       match (ids, ts) with
+	 ([], []) -> tyenv
+       | ([], _) -> err "err in match"
+       | (_, []) -> err "err in match"
+       | (i::is, t::ts) -> (Environment.extend i t (extend tyenv is ts))
+     in let rec trial = function
+	  | MatchCondAndExp (cond, exp, nextCond) ->
+	     let rec subtrial pat = function
+	       (* パターンと条件式を受け取り、
+	          マッチしたかどうかと環境に追加すべき識別子のリストと
+                  その式の型と型代入のタプルのリストのタプルを返す。 *)
+	       | ILit i -> ((match pat with ILit i_ -> i = i_ | _ -> false), [], [])
+	       | BLit b -> ((match pat with BLit b_ -> b = b_ | _ -> false), [], [])
+	       | EmpList -> ((match pat with EmpList -> true | _ -> false), [], [])
+	       | Underscore -> (true, [], [])
+	       | Var id -> (true, [id], [ty_exp tyenv pat])
+	       | ListLit (head, tail) ->
+		  (match pat with
+		     ListLit (patH, patT) ->
+		     let (resultH, idsH, esH) = subtrial patH head
+		     and (resultT, idsT, esT) = subtrial patT tail
+		     in if resultH && resultT
+			then (true, idsH@idsT, esH@esT)
+			else (false, [], [])
+		   | _ -> (false, [], [])
+		  )
+	       | _ -> (false, [], [])
+	     in let (result, ids, tys) = subtrial p cond
+		in if result
+		   then (ids, tys, exp)
+		   else trial nextCond 
+	  | MatchCondEnd | _ -> err ("Pattern Match failure")
+	in let (ids, s_and_tys, exp) = trial c in
+	   let (ss, tys) = unzip s_and_tys in
+	   let new_env = extend tyenv ids tys in
+	   let (se, tye) = ty_exp new_env exp in
+	   let eqs = eqsList_of_subsetList ss @ eqs_of_subst se in
+	   let s = unify eqs
+	   in (s, subst_type s tye)
   | LetExp (Declare (id, exp1), exp2) ->
      let (s1, ty1) = ty_exp tyenv exp1 in
      let (s2, ty2) = ty_exp (Environment.extend id ty1 tyenv) exp2 in
@@ -152,7 +207,7 @@ let rec ty_exp tyenv = function
 			   in (s, subst_type s (TyList ty1))
 	| t -> err ("cons tail " ^ string_of_ty_MkII t ^ " is not a list"))
   | EmpList -> ([], TyList (TyVar (fresh_tyvar ())))
-
+  | Underscore -> ([], TyVar (fresh_tyvar ()))
   | _ -> err ("Not Implemented!")
 	     
 let ty_decl tyenv = function
