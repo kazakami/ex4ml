@@ -2,19 +2,15 @@
 type id = string
 type tyvar = int
 
+exception Error of string
+
+let err s = raise (Error s)
+	       
 type ty =
     TyInt
   | TyBool
   | TyVar of tyvar
   | TyFun of ty * ty
-
-let rec string_of_ty = function
-    TyInt -> "int"
-  | TyBool -> "bool"
-  | TyFun (t1, t2) -> string_of_ty t1 ^ " -> " ^ string_of_ty t2
-  | TyVar tv -> "'" ^ Char.escaped (char_of_int (tv+97))
-
-let pp_ty t = print_string (string_of_ty t)
 
 let fresh_tyvar =
   let counter = ref 0 in
@@ -29,6 +25,52 @@ let rec freevar_ty t =
   | TyFun (tv1, tv2) -> MySet.union (freevar_ty tv1) (freevar_ty tv2)
   | _ -> MySet.empty
 
+(* type scheme *)
+type tysc = TyScheme of tyvar list * ty
+let tysc_of_ty ty = TyScheme ([], ty)
+let freevar_tysc tysc =
+  freevar_ty
+
+let rec upToN n = if n = 0 then [0] else upToN (n-1) @ [n]
+let rec zip a =
+  function [] -> []
+	 | x::xs -> match a with
+		    | [] -> []
+		    | hd::tl -> (hd, x) :: (zip tl xs)
+let rec search n =
+  function [] -> err "err in search"
+	 | (key, data)::xs -> if n = key
+			      then data
+			      else search n xs
+  
+let string_of_ty_MkII t =
+  let tyList = List.sort (fun x y -> if x > y then 1 else 0) (MySet.to_list (freevar_ty t)) in
+  let tyNum = List.length tyList in
+  let appList = zip tyList (upToN tyNum) in
+  let rec str_of_ty t flag =
+    match t with
+      TyInt -> "int"
+    | TyBool -> "bool"
+    | TyFun (t1, t2) -> if flag
+			then "(" ^ str_of_ty t1 true ^ " -> " ^ str_of_ty t2 false ^ ")"
+			else str_of_ty t1 true ^ " -> " ^ str_of_ty t2 false
+    | TyVar tv -> "'" ^ Char.escaped (char_of_int ((search tv appList)+97))
+  in str_of_ty t false
+
+let string_of_ty t =
+  let rec str_of_ty t flag =
+    match t with
+      TyInt -> "int"
+    | TyBool -> "bool"
+    | TyFun (t1, t2) -> if flag
+			then "(" ^ str_of_ty t1 true ^ " -> " ^ str_of_ty t2 false ^ ")"
+			else str_of_ty t1 true ^ " -> " ^ str_of_ty t2 false
+    | TyVar tv -> "'" ^ Char.escaped (char_of_int (tv+97))
+  in str_of_ty t false
+
+	       
+let pp_ty t = print_string (string_of_ty_MkII t)
+	   
 type binOp = Append | Plus | Minus | Mult | Div | Lt | LAnd | LOr
 
 type exp =
