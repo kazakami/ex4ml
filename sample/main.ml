@@ -20,6 +20,35 @@ let rec print_type_vals id v t =
     -> print_type_val idh vh th;
       print_type_vals idt vt tt
 
+let print_val id v =
+  Printf.printf "val %s : " id;
+  print_string " = ";
+  pp_val v;
+  print_newline();
+  ()
+
+let rec print_vals id v =
+  match (id, v) with
+  | ([], _) -> ()
+  | (_, []) -> ()
+  | ((idh::idt), (vh::vt))
+    -> print_val idh vh;
+      print_vals idt vt
+
+(*
+(* 型推論無い方 *)
+let rec read_eval_print env =
+  print_string "# ";
+  flush stdout;
+  try (let decl = Parser.toplevel Lexer.main (Lexing.from_channel stdin) in
+       let (id, newenv, v) = eval_decl env decl in
+       print_vals id v;
+       read_eval_print newenv) with
+  | Error s -> print_endline s; read_eval_print env
+  | Failure s -> print_endline s; read_eval_print env
+  | _ -> print_endline "a error occurred"; read_eval_print env
+ *)
+(* 型推論有る方 *)
 let rec read_eval_print env tyenv =
   print_string "# ";
   flush stdout;
@@ -30,7 +59,7 @@ let rec read_eval_print env tyenv =
        read_eval_print newenv tyenv) with
   | Error s -> print_endline s; read_eval_print env tyenv
   | Failure s -> print_endline s; read_eval_print env tyenv
-(*  | _ -> print_endline "a error occurred"; read_eval_print env*)
+  | _ -> print_endline "a error occurred"; read_eval_print env tyenv
 
 
 let env_add str env =
@@ -48,6 +77,9 @@ let initial_env =
     ["let (+) = fun x -> fun y -> x + y;;";
      "let (*) = fun x -> fun y -> x * y;;";
      "let i = 1;;";
+     "let ii = 2;;";
+     "let iii = 3;;";
+     "let iv = 4;;";
      "let v = 5;;"]
     Environment.empty
 

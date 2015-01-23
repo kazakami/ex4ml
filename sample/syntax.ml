@@ -11,6 +11,7 @@ type ty =
   | TyBool
   | TyVar of tyvar
   | TyFun of ty * ty
+  | TyList of ty
 
 let fresh_tyvar =
   let counter = ref 0 in
@@ -23,6 +24,7 @@ let rec freevar_ty t =
   match t with
     TyVar tv -> MySet.singleton tv
   | TyFun (tv1, tv2) -> MySet.union (freevar_ty tv1) (freevar_ty tv2)
+  | TyList t -> freevar_ty t
   | _ -> MySet.empty
 
 (* type scheme *)
@@ -42,7 +44,8 @@ let rec search n =
 	 | (key, data)::xs -> if n = key
 			      then data
 			      else search n xs
-  
+
+(* 型変数の値をaからアルファベットに割り当てる。 *)
 let string_of_ty_MkII t =
   let tyList = List.sort (fun x y -> if x > y then 1 else 0) (MySet.to_list (freevar_ty t)) in
   let tyNum = List.length tyList in
@@ -55,8 +58,10 @@ let string_of_ty_MkII t =
 			then "(" ^ str_of_ty t1 true ^ " -> " ^ str_of_ty t2 false ^ ")"
 			else str_of_ty t1 true ^ " -> " ^ str_of_ty t2 false
     | TyVar tv -> "'" ^ Char.escaped (char_of_int ((search tv appList)+97))
+    | TyList t -> str_of_ty t false ^ " list"
   in str_of_ty t false
 
+(* 型変数の値を単純にその値に97を足したascii文字に割り当てる。 *)
 let string_of_ty t =
   let rec str_of_ty t flag =
     match t with
@@ -66,6 +71,7 @@ let string_of_ty t =
 			then "(" ^ str_of_ty t1 true ^ " -> " ^ str_of_ty t2 false ^ ")"
 			else str_of_ty t1 true ^ " -> " ^ str_of_ty t2 false
     | TyVar tv -> "'" ^ Char.escaped (char_of_int (tv+97))
+    | TyList t -> str_of_ty t false ^ " list"
   in str_of_ty t false
 
 	       

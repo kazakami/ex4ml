@@ -94,12 +94,16 @@ let rec ty_exp tyenv = function
   | ILit _ -> ([], TyInt)
   | BLit _ -> ([], TyBool)
   | BinOp (op, exp1, exp2) ->
-    let (s1, ty1) = ty_exp tyenv exp1 in
-    let (s2, ty2) = ty_exp tyenv exp2 in
-    let (eqs3, ty) = ty_prim op ty1 ty2 in
-    let eqs = (eqs_of_subst s1) @ (eqs_of_subst s2) @ eqs3 in
-    let s3 = (*print_string (string_of_eqs eqs);*)unify eqs
-    in (*print_string (string_of_subst s3);*)(s3, subst_type s3 ty)
+     (match op with
+      | Cons ->
+	 ty_exp tyenv (ListLit (exp1, exp2))
+       |_ ->
+	 let (s1, ty1) = ty_exp tyenv exp1 in
+	 let (s2, ty2) = ty_exp tyenv exp2 in
+	 let (eqs3, ty) = ty_prim op ty1 ty2 in
+	 let eqs = (eqs_of_subst s1) @ (eqs_of_subst s2) @ eqs3 in
+	 let s3 = (*print_string (string_of_eqs eqs);*)unify eqs
+	 in (*print_string (string_of_subst s3);*)(s3, subst_type s3 ty))
   | IfExp (exp1, exp2, exp3) ->
      let (s1, ty1) = ty_exp tyenv exp1 in
      let (s2, ty2) = ty_exp tyenv exp2 in
@@ -113,6 +117,15 @@ let rec ty_exp tyenv = function
      let eqs = (eqs_of_subst s1) @ (eqs_of_subst s2) in
      let s3 = unify eqs
      in (s3, subst_type s3 ty2)
+  | LetRecExp (id, FunExp(fid, fexp), exp) ->
+     let new_ty1 = TyVar (fresh_tyvar ()) in
+     let new_ty2 = TyVar (fresh_tyvar ()) in
+     let (sf, tyf) = ty_exp (Environment.extend id (TyFun (new_ty1, new_ty2))
+					       (Environment.extend fid new_ty1 tyenv)) fexp in
+     let (se, tye) = ty_exp (Environment.extend id (TyFun (new_ty1, new_ty2)) tyenv) exp in
+     let eqs = [(tyf, new_ty2)] @ (eqs_of_subst sf) @ (eqs_of_subst se) in
+     let s = unify eqs
+     in (s, subst_type s tye)
   | FunExp (id, exp) ->
      let domty = TyVar (fresh_tyvar ()) in
      let s, ranty =
@@ -130,6 +143,16 @@ let rec ty_exp tyenv = function
 		       let s = unify eqs
 		       in (s, subst_type s new_ty)
 	 | _ -> err ("not a function"))
+  | ListLit (head, tail) ->
+     let (s1, ty1) = ty_exp tyenv head in
+     let (s2, ty2) = ty_exp tyenv tail
+     in (match ty2 with
+	  TyList t_tail -> let eqs = [(ty1, t_tail)] @ (eqs_of_subst s1) @ (eqs_of_subst s2) in
+			   let s = unify eqs
+			   in (s, subst_type s (TyList ty1))
+	| t -> err ("cons tail " ^ string_of_ty_MkII t ^ " is not a list"))
+  | EmpList -> ([], TyList (TyVar (fresh_tyvar ())))
+
   | _ -> err ("Not Implemented!")
 	     
 let ty_decl tyenv = function
