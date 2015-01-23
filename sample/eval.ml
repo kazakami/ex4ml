@@ -66,8 +66,8 @@ let rec apply_prim op arg1 arg2 = match op, arg1, arg2 with
   | LAnd, _, _ -> err ("Both arguments must be bool: &&")
   | LOr, BoolV b1, BoolV b2 -> BoolV (b1 || b2)
   | LOr, _, _ -> err ("Both arguments must be bool: ||")
-  | Append, head, ListV l -> ListV (head::l)
-  | Append, _, _ -> err ("Right arguments must be list: ::")
+  | Cons, head, ListV l -> ListV (head::l)
+  | Cons, _, _ -> err ("Right arguments must be list: ::")
 
 let rec env_extend env =
   function

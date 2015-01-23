@@ -6,7 +6,7 @@ open Syntax
 %token LOR LAND PLUS MINUS MULT DIV LT
 %token IF THEN ELSE TRUE FALSE
 %token LET IN EQ AND REC
-%token EMPLIST APPEND
+%token EMPLIST CONS
 %token LSPAREN RSPAREN SEMIC
 %token MATCH WITH PIPE UNDERSCORE
 
@@ -116,11 +116,11 @@ LAExpr :
   | LTExpr { $1 }
 
 LTExpr : 
-    LTExpr LT AppendExpr { BinOp (Lt, $1, $3) }
-  | AppendExpr { $1 }
+    LTExpr LT ConsExpr { BinOp (Lt, $1, $3) }
+  | ConsExpr { $1 }
 
-AppendExpr :
-    PExpr APPEND AppendExpr { BinOp (Append, $1, $3) }
+ConsExpr :
+    PExpr CONS ConsExpr { BinOp (Cons, $1, $3) }
   | PExpr { $1 }
 
 PExpr :
@@ -173,7 +173,7 @@ MatchCondElem :
 
 MatchCond :
     MatchCondElem { $1 }
-  | MatchCondElem APPEND MatchCond { ListLit ($1, $3) }
+  | MatchCondElem CONS MatchCond { ListLit ($1, $3) }
 
 MatchCondAndExpr :
     PIPE MatchCond RARROW Expr { MatchCondAndExp ($2, $4, MatchCondEnd) }
@@ -206,6 +206,6 @@ List_ :
 
 ListExpr :
     EMPLIST { EmpList }
-//  | Expr APPEND ListExpr { ListLit ($1, $3) }
+//  | Expr CONS ListExpr { ListLit ($1, $3) }
   | LSPAREN List_ RSPAREN { $2 }
 

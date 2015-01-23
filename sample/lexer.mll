@@ -38,7 +38,7 @@ rule main = parse
 | "||" { Parser.LOR }
 | "=" { Parser.EQ }
 | "->" { Parser.RARROW }
-| "::" { Parser.APPEND }
+| "::" { Parser.CONS }
 | "[" " "* "]" { Parser.EMPLIST }
 | "|" { Parser.PIPE }
 | "[" { Parser.LSPAREN }

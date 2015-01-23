@@ -71,7 +71,7 @@ let string_of_ty t =
 	       
 let pp_ty t = print_string (string_of_ty_MkII t)
 	   
-type binOp = Append | Plus | Minus | Mult | Div | Lt | LAnd | LOr
+type binOp = Cons | Plus | Minus | Mult | Div | Lt | LAnd | LOr
 
 type exp =
     Var of id
