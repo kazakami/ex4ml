@@ -60,7 +60,7 @@ let rec read_eval_print env tyenv =
   | Error s -> print_endline s; read_eval_print env tyenv
   | Failure s -> print_endline s; read_eval_print env tyenv
   | e -> raise e
-(*  | _ -> print_endline "a error occurred"; read_eval_print env tyenv *)
+  | _ -> print_endline "a error occurred"; read_eval_print env tyenv 
 
 
 let env_add str env =
@@ -89,11 +89,27 @@ let initial_tyenv =
     [("i", TyInt); ("v", TyInt)]
     Environment.empty
 
-
-(*let _ =
+(*
+let _ =
   let alpha = fresh_tyvar () in
   let beta = fresh_tyvar () in
   print_string (string_of_ty (subst_type [(beta, (TyFun (TyVar alpha, TyInt))); (alpha, TyBool)] (TyVar beta)))
  *)
+(*
+let _ =
+  let a = fresh_tyvar () in
+  let b = fresh_tyvar () in
+  let c = fresh_tyvar () in
+  let d = fresh_tyvar () in
+  List.map (fun i -> print_string (Char.escaped (char_of_int (i+97))))
+	   (MySet.to_list (freevar_ty (subst_type [(b, (TyFun ((TyVar a),(TyVar d))))]
+						  (TyFun ((TyVar b), (TyVar c))))));
+  if MySet.member a (freevar_ty (subst_type [(b, (TyFun ((TyVar a),(TyVar d))))]
+					    (TyFun ((TyVar b), (TyVar c)))))
+  then print_string "y"
+  else print_string "n"
+ *)
+    
 
 let _ = read_eval_print initial_env initial_tyenv
+

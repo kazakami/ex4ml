@@ -35,27 +35,22 @@ let rec subst_type l = function
 let eqs_of_subst s =
   List.map (fun (tv, t) -> (TyVar tv, t)) s
 
+let rec substitute ((a, t) as sbst) = function
+    TyVar b -> if a = b
+	       then t
+	       else TyVar b
+  | TyList typ -> TyList (substitute sbst typ)
+  | TyFun (t1, t2) -> TyFun ((substitute sbst t1),
+			     (substitute sbst t2))
+  | typ -> typ
+	   
 let rec subst_eqs s eqs =
-  let rec subst (a, t) =
-    function
+  let rec sbst s = function
       [] -> []
-    | (TyVar t1, TyVar t2) :: xs -> if t1 = a && t2 = a
-				    then (t, t) :: (subst (a, t) xs)
-				    else if t1 == a
-				    then (t, TyVar t2) :: (subst (a, t) xs)
-				    else if t2 == a
-				    then (TyVar t2, t) :: (subst (a, t) xs)
-				    else (TyVar t1, TyVar t2) :: (subst (a, t) xs)
-    | (TyVar t1, tt) :: xs -> if t1 = a
-			      then (t, tt) :: (subst (a, t) xs)
-			      else (TyVar t1, tt) :: (subst (a, t) xs)
-    | (tt, TyVar t2) :: xs -> if t2 = a
-			      then (tt, t) :: (subst (a, t) xs)
-			      else (tt, TyVar t2) :: (subst (a, t) xs)
-    | ttt :: xs -> ttt :: (subst (a, t) xs)
-  in match s with
-       [] -> eqs
-     | (a, t) :: xs -> subst_eqs xs (subst (a, t) eqs)
+    | (t1, t2) :: xs -> (substitute s t1, substitute s t2) :: (sbst s xs) in
+  match s with
+    [] -> eqs
+  | x :: xs -> subst_eqs xs (sbst x eqs)
 	   
 let ty_prim op ty1 ty2 =
   match op with
@@ -69,8 +64,9 @@ let rec string_of_eqs =
     [] -> ""
   | (TyInt, TyInt) :: xs -> "[int, int]" ^ string_of_eqs xs
   | (TyBool, TyBool) :: xs -> "[bool, bool]" ^ string_of_eqs xs
-  | (TyVar a, t) :: xs -> "[" ^ string_of_int a ^ ", " ^ string_of_ty t ^ "]" ^ string_of_eqs xs
+  | (TyVar a, t) :: xs -> "[" ^ (Char.escaped (char_of_int (a+97))) ^ ", " ^ string_of_ty t ^ "]" ^ string_of_eqs xs
   | (t, TyVar a) :: xs -> string_of_eqs ((TyVar a, t) :: xs)
+  | (t1, t2) :: xs -> "[" ^ string_of_ty t1 ^ ", " ^ string_of_ty t2 ^ "]" ^ string_of_eqs xs
   | _ -> err "err in eqs"
 
 let print_eqs_line eqs = print_string (string_of_eqs eqs ^ "\n")
@@ -84,17 +80,20 @@ let rec unify =
     -> if string_of_ty t1 = string_of_ty t2
        then unify xs
        else err "err in unify : unsame list"
-  | (TyVar a, TyVar b) :: xs -> if a = b
+  | (TyVar a, TyVar b) :: xs -> print_int a;print_int b;if a = b
 				then unify xs
 				else (a, TyVar b) :: (unify (subst_eqs [(a, TyVar b)] xs))
-  | (TyVar a, t) :: xs -> if MySet.member a (freevar_ty t)
-			  then err ("err in unify: " ^ string_of_int a ^ " is in " ^ string_of_ty t)
-			  else (a, t) :: (unify (subst_eqs [(a, t)] xs))
+  | (TyVar a, t) :: xs -> print_string ("{" ^ (Char.escaped (char_of_int (a+97)))); print_string (string_of_ty t);print_string "}";
+			  if MySet.member a (freevar_ty t)
+			  then err ("err in unify: " ^ (Char.escaped (char_of_int (a+97))) ^ " is in " ^ string_of_ty t)
+			  else (print_string "\n**";print_eqs_line (subst_eqs [(a, t)] xs);
+				(a, t) :: (unify (subst_eqs [(a, t)] xs)))
   | (t, TyVar a) :: xs -> unify ((TyVar a, t) :: xs)
   | (((TyFun (t11, t12)) as t1), ((TyFun (t21, t22)) as t2)) :: xs
-    -> if string_of_ty t1 = string_of_ty t2
+    -> if t1 = t2
        then unify xs
-       else unify ((t11, t21) :: (t12, t22) :: xs)
+       else (print_string (string_of_ty t12);print_string (string_of_ty t22);print_string "\n";
+	     unify ((t12, t22) :: (t11, t21) :: xs))
   | _ -> err "err in unify not : not match"
 
 	     
@@ -119,8 +118,8 @@ let rec ty_exp tyenv = function
      let (s1, ty1) = ty_exp tyenv exp1 in
      let (s2, ty2) = ty_exp tyenv exp2 in
      let (s3, ty3) = ty_exp tyenv exp3 in
-     let eqs =  [(ty2, ty3); (ty1, TyBool)] @ (eqs_of_subst s1) @ (eqs_of_subst s2) @ (eqs_of_subst s3) in
-     let s4 = unify eqs
+     let eqs = (eqs_of_subst s3) @ (eqs_of_subst s2) @ (eqs_of_subst s1) @ [(ty1, TyBool); (ty2, ty3)] in
+     let s4 = print_eqs_line eqs;unify eqs
      in (s4, subst_type s4 ty2)
   | MatchExp (p, c) ->
      let rec eqsList_of_subsetList = function
@@ -140,7 +139,7 @@ let rec ty_exp tyenv = function
                   その式の型と型代入のタプルのリストのタプルを返す。 *)
 	       | ILit i -> ((match pat with ILit i_ -> i = i_ | _ -> false), [], [])
 	       | BLit b -> ((match pat with BLit b_ -> b = b_ | _ -> false), [], [])
-	       | EmpList -> ((match pat with EmpList -> true | _ -> false), [], [])
+	       | EmpList -> print_string "@";((match pat with EmpList -> true | _ -> false), [], [])
 	       | Underscore -> (true, [], [])
 	       | Var id -> (true, [id], [ty_exp tyenv pat])
 	       | ListLit (head, tail) ->
@@ -158,7 +157,8 @@ let rec ty_exp tyenv = function
 		in if result
 		   then (ids, tys, exp)
 		   else trial nextCond 
-	  | MatchCondEnd | _ -> err ("Pattern Match failure")
+	  | MatchCondEnd -> err "Pattern was not match"
+	  | _ -> err ("Type Pattern Match failure")
 	in let (ids, s_and_tys, exp) = trial c in
 	   let (ss, tys) = unzip s_and_tys in
 	   let new_env = extend tyenv ids tys in
@@ -175,27 +175,29 @@ let rec ty_exp tyenv = function
   | LetRecExp (id, FunExp(fid, fexp), exp) ->
      let new_ty1 = TyVar (fresh_tyvar ()) in
      let new_ty2 = TyVar (fresh_tyvar ()) in
-     let (sf, tyf) = ty_exp (Environment.extend id (TyFun (new_ty1, new_ty2))
-					       (Environment.extend fid new_ty1 tyenv)) fexp in
+     let (sf, tyf) = ty_exp (Environment.extend fid new_ty1
+					       (Environment.extend id (TyFun (new_ty1, new_ty2)) tyenv)) fexp in
      let (se, tye) = ty_exp (Environment.extend id (TyFun (new_ty1, new_ty2)) tyenv) exp in
-     let eqs = [(tyf, new_ty2)] @ (eqs_of_subst sf) @ (eqs_of_subst se) in
-     let s = unify eqs
+     let eqs = (eqs_of_subst se) @ (eqs_of_subst sf) @ [(tyf, new_ty2)] in
+     let s = print_eqs_line eqs;unify eqs
      in (s, subst_type s tye)
   | FunExp (id, exp) ->
-     let domty = TyVar (fresh_tyvar ()) in
-     let s, ranty =
-       ty_exp (Environment.extend id domty tyenv) exp in
-     (s, TyFun (subst_type s domty, ranty))
+     let new_ty = TyVar (fresh_tyvar ()) in
+     let (se, tye) = print_string id;print_string (string_of_ty new_ty);
+		     ty_exp (Environment.extend id new_ty tyenv) exp in
+     let eqs = eqs_of_subst se in
+     let s = print_eqs_line eqs;unify eqs
+     in (s, TyFun (subst_type s new_ty, subst_type s tye))
   | AppExp (exp1, exp2) ->
      let (s1, ty1) = ty_exp tyenv exp1 in
      let (s2, ty2) = ty_exp tyenv exp2
      in (match ty1 with
 	   TyFun (tyf1, tyf2) -> let eqs = (eqs_of_subst s1) @ (eqs_of_subst s2) @ [(tyf1, ty2)] in
-				 let s3 = unify eqs
+				 let s3 = print_eqs_line eqs;unify eqs
 				 in (s3, subst_type s3 tyf2)
 	 | TyVar ty -> let new_ty = TyVar (fresh_tyvar ()) in
 		       let eqs = (eqs_of_subst s1) @ (eqs_of_subst s2) @ [(TyVar ty, TyFun (ty2, new_ty))] in
-		       let s = unify eqs
+		       let s = print_eqs_line eqs;unify eqs
 		       in (s, subst_type s new_ty)
 	 | _ -> err ("not a function"))
   | ListLit (head, tail) ->
