@@ -11,7 +11,7 @@ let rec insert x = function
     [] -> [x]
   | y::rest -> if x = y then y :: rest else y :: insert x rest
 
-let union xs ys = 
+let union ys xs = 
   List.fold_left (fun zs x -> insert x zs) ys xs
 
 let rec remove x = function

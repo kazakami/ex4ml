@@ -47,7 +47,7 @@ let rec search n =
 
 (* 型変数の値をaからアルファベットに割り当てる。 *)
 let string_of_ty_MkII t =
-  let tyList = List.sort (fun x y -> if x > y then 1 else 0) (MySet.to_list (freevar_ty t)) in
+  let tyList =  (MySet.to_list (freevar_ty t)) in
   let tyNum = List.length tyList in
   let appList = zip tyList (upToN tyNum) in
   let rec str_of_ty t flag =

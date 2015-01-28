@@ -30,6 +30,7 @@ let rec subst_type l = function
 	then subst_type xs y
 	else subst_type xs t)
   | TyFun (t1, t2) -> TyFun ((subst_type l t1), (subst_type l t2))
+  | TyList t -> TyList (subst_type l t)
   | x -> x
 
 let eqs_of_subst s =
@@ -181,7 +182,7 @@ let rec ty_exp tyenv = function
      in (s, subst_type s tye)
   | FunExp (id, exp) ->
      let new_ty = TyVar (fresh_tyvar ()) in
-     let (se, tye) = ty_exp (Environment.extend id new_ty tyenv) exp in
+     let (se, tye) = (*print_string (string_of_ty new_ty);*)ty_exp (Environment.extend id new_ty tyenv) exp in
      let eqs = eqs_of_subst se in
      let s = unify eqs
      in (s, TyFun (subst_type s new_ty, subst_type s tye))
@@ -192,7 +193,7 @@ let rec ty_exp tyenv = function
 	   TyFun (tyf1, tyf2) -> let eqs = (eqs_of_subst s1) @ (eqs_of_subst s2) @ [(tyf1, ty2)] in
 				 let s3 = unify eqs
 				 in (s3, subst_type s3 tyf2)
-	 | TyVar ty -> let new_ty = TyVar (fresh_tyvar ()) in
+ 	 | TyVar ty -> let new_ty = TyVar (fresh_tyvar ()) in
 		       let eqs = (eqs_of_subst s1) @ (eqs_of_subst s2) @ [(TyVar ty, TyFun (ty2, new_ty))] in
 		       let s = unify eqs
 		       in (s, subst_type s new_ty)
@@ -201,16 +202,46 @@ let rec ty_exp tyenv = function
      let (s1, ty1) = ty_exp tyenv head in
      let (s2, ty2) = ty_exp tyenv tail
      in (match ty2 with
-	  TyList t_tail -> let eqs = [(ty1, t_tail)] @ (eqs_of_subst s1) @ (eqs_of_subst s2) in
+	  TyList t_tail -> let eqs = (eqs_of_subst s1) @ (eqs_of_subst s2) @ [(ty1, t_tail)] in
 			   let s = unify eqs
 			   in (s, subst_type s (TyList ty1))
-	| t -> err ("cons tail " ^ string_of_ty_MkII t ^ " is not a list"))
+	 | TyVar a -> let eqs = (eqs_of_subst s1) @ (eqs_of_subst s2) @ [(TyVar a, TyList ty1)] in
+		      let s = unify eqs
+		      in (s, subst_type s (TyList ty1))
+	| t -> err ("cons tail " ^ string_of_ty t ^ " is not list"))
   | EmpList -> ([], TyList (TyVar (fresh_tyvar ())))
   | Underscore -> ([], TyVar (fresh_tyvar ()))
   | _ -> err ("Not Implemented!")
 	     
-let ty_decl tyenv = function
-    Exp e -> [ty_exp tyenv e]
+let rec ty_decl tyenv = function
+    Exp e -> let (_, t) = ty_exp tyenv e in (tyenv, [t])
+  | Decl (id, e) -> let (_, t) = ty_exp tyenv e in ((Environment.extend id t tyenv), [t])
+  | (ManyDecl _) as md ->
+     let rec andDecl tyenv = function
+	 AndDecl (Decl (id, e), decl2) ->
+	 let (_, t) = ty_exp tyenv e
+	 in (id, t) :: (andDecl tyenv decl2)
+       | AndDecl (RecDecl (id, FunExp (fid, e)), decl2) ->
+	  let (_, t) = ty_exp tyenv (LetRecExp (id, FunExp (fid, e), Var id))
+	  in (id, t) :: (andDecl tyenv decl2)
+       | NoneDecl -> []
+       | _ -> err "err in let and declare typing"
+     in let rec manyDecl types tyenv = function
+	    ManyDecl (decl1, decl2) ->
+	    let addingList = andDecl tyenv decl1 in
+	    let (ids, tys) = unzip addingList in
+	    let rec env_extend env =
+	      function
+	      | [] -> env
+	      | (id, t)::xs -> (Environment.extend id t (env_extend env xs)) in
+	    let newtyenv = env_extend tyenv addingList in
+	    manyDecl (types @ tys) newtyenv decl2
+	  | NoneDecl -> (tyenv, types)
+	  | _ -> err "err in let declare typing"
+	in manyDecl [] tyenv md
+  | RecDecl (id, FunExp (fid, e)) ->
+     let (_, t) = ty_exp tyenv (LetRecExp (id, FunExp (fid, e), Var id))
+     in ((Environment.extend id t tyenv), [t])
   | _ -> err ("Not Implemented in decl!")
 
 
