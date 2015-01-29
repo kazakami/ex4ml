@@ -61,7 +61,10 @@ let string_of_ty_MkII t =
     | TyList t -> str_of_ty t false ^ " list"
   in str_of_ty t false
 
+let string_of_ty = string_of_ty_MkII
+	       
 (* 型変数の値を単純にその値に97を足したascii文字に割り当てる。 *)
+	       (*
 let string_of_ty t =
   let rec str_of_ty t flag =
     match t with
@@ -73,6 +76,7 @@ let string_of_ty t =
     | TyVar tv -> "'" ^ Char.escaped (char_of_int (tv+97))
     | TyList t -> str_of_ty t false ^ " list"
   in str_of_ty t false
+		*)
 
 	       
 let pp_ty t = print_string (string_of_ty_MkII t)
