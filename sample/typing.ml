@@ -121,50 +121,48 @@ let rec ty_exp tyenv = function
      let s4 = unify eqs
      in (s4, subst_type s4 ty2)
   | MatchExp (p, c) ->
-     let rec eqsList_of_subsetList = function
+     let rec concat = function x::xs -> x @ (concat xs) | [] -> [] in
+     let rec eqs_of_types = function
+	 t1::t2::ts -> (t1,t2) :: (eqs_of_types (t2::ts))
+       | _ -> [] in
+     let rec eqsList_of_substList = function
 	 [] -> []
-       | s :: ss -> eqs_of_subst s @ eqsList_of_subsetList ss in
+       | s :: ss -> eqs_of_subst s @ eqsList_of_substList ss in
      let rec extend tyenv ids ts =
        match (ids, ts) with
 	 ([], []) -> tyenv
        | ([], _) -> err "err in match"
        | (_, []) -> err "err in match"
-       | (i::is, t::ts) -> (Environment.extend i t (extend tyenv is ts))
-     in let rec trial = function
-	  | MatchCondAndExp (cond, exp, nextCond) ->
-	     let rec subtrial pat = function
-	       (* パターンと条件式を受け取り、
-	          マッチしたかどうかと環境に追加すべき識別子のリストと
-                  その式の型と型代入のタプルのリストのタプルを返す。 *)
-	       | ILit i -> ((match pat with ILit i_ -> i = i_ | _ -> false), [], [])
-	       | BLit b -> ((match pat with BLit b_ -> b = b_ | _ -> false), [], [])
-	       | EmpList -> ((match pat with EmpList -> true | _ -> false), [], [])
-	       | Underscore -> (true, [], [])
-	       | Var id -> (true, [id], [ty_exp tyenv pat])
-	       | ListLit (head, tail) ->
-		  (match pat with
-		     ListLit (patH, patT) ->
-		     let (resultH, idsH, esH) = subtrial patH head
-		     and (resultT, idsT, esT) = subtrial patT tail
-		     in if resultH && resultT
-			then (true, idsH@idsT, esH@esT)
-			else (false, [], [])
-		   | _ -> (false, [], [])
-		  )
-	       | _ -> (false, [], [])
-	     in let (result, ids, tys) = subtrial p cond
-		in if result
-		   then (ids, tys, exp)
-		   else trial nextCond 
-	  | MatchCondEnd -> err "Pattern was not match"
-	  | _ -> err ("Type Pattern Match failure")
-	in let (ids, s_and_tys, exp) = trial c in
-	   let (ss, tys) = unzip s_and_tys in
-	   let new_env = extend tyenv ids tys in
-	   let (se, tye) = ty_exp new_env exp in
-	   let eqs = eqsList_of_subsetList ss @ eqs_of_subst se in
-	   let s = unify eqs
-	   in (s, subst_type s tye)
+       | (i::is, t::ts) -> (Environment.extend i t (extend tyenv is ts)) in
+     let rec subtrial pat = function
+       (* パターンと条件式を受け取り、
+	  環境に追加すべき識別子のリストと
+          その式の型と型代入のタプルのリストのタプルを返す。 *)
+	 ILit _ | BLit _ | EmpList | Underscore -> ([], [])
+	 | Var id -> ([id], [ty_exp tyenv pat])
+	 | ListLit (head, tail) ->
+	    (match pat with
+	       ListLit (patH, patT) ->
+	       let (idsH, esH) = subtrial patH head
+	       and (idsT, esT) = subtrial patT tail
+	       in (idsH@idsT, esH@esT)
+	     | (Var id) as v ->
+		err "hoge"
+	     | _ -> err "err in match!!")
+	 | _ -> err "err in match" in
+     let rec trial = function (* 各条件式の返り値のeqsと型推論結果のタプルのリストを返す。 *)
+       | MatchCondAndExp (cond, exp, nextCond) ->
+	  let (ids, s_and_tys) = subtrial p cond in
+	  let (ss, tys) = unzip s_and_tys in
+	  let new_tyenv = extend tyenv ids tys in
+	  let (se, tye) = ty_exp new_tyenv exp
+	  in (eqsList_of_substList ss @ (eqs_of_subst se), tye) :: (trial nextCond)
+       | MatchCondEnd -> []
+       | _ -> err ("Type Pattern Match failure")
+     in let (eq, types) = unzip (trial c) in
+	let eqs = (concat eq) @ (eqs_of_types types) in
+	let s = unify eqs
+	in (s, List.hd types)
   | LetExp (Declare (id, exp1), exp2) ->
      let (s1, ty1) = ty_exp tyenv exp1 in
      let (s2, ty2) = ty_exp (Environment.extend id ty1 tyenv) exp2 in
