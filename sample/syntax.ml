@@ -2,6 +2,8 @@
 type id = string
 type tyvar = int
 
+
+	       
 exception Error of string
 
 let err s = raise (Error s)
@@ -31,7 +33,9 @@ let rec freevar_ty t =
 type tysc = TyScheme of tyvar list * ty
 let tysc_of_ty ty = TyScheme ([], ty)
 let freevar_tysc tysc =
-  freevar_ty
+  match tysc with
+    TyScheme (tyvs, t) -> let tyvars = freevar_ty t in
+			  err "hoge"
 
 let rec upToN n = if n = 0 then [0] else upToN (n-1) @ [n]
 let rec zip a =

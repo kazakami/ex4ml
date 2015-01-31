@@ -86,12 +86,22 @@ let rec tyenv_add_list l tyenv =
 
 let initialiser =
   ["let (+) = fun x -> fun y -> x + y;;";
+   "let (-) = fun x -> fun y -> x - y;;";
    "let (*) = fun x -> fun y -> x * y;;";
+   "let (/) = fun x -> fun y -> x / y;;";
+   "let (<) = fun x -> fun y -> x < y;;";
+   "let (&&) = fun x -> fun y -> x && y;;";
+   "let (||) = fun x -> fun y -> x || y;;";
+   "let (::) = fun x -> fun y -> x :: y;;";
    "let i = 1;;";
    "let ii = 2;;";
    "let iii = 3;;";
    "let iv = 4;;";
-   "let v = 5;;"]
+   "let v = 5;;";
+   "let rec foldr f x l = match l with [] -> x | h::t -> f h (foldr f x t);;";
+   "let map f = foldr (fun x xs -> (f x)::xs) [];;";
+   "let rec fact x = if x < 1 then 1 else x * fact (x - 1);;";
+  ]
 			 
 let initial_env =
   env_add_list
